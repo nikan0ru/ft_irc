@@ -3,11 +3,15 @@
 
 int server::creat_sokect()
 {
-    if ((server::socket_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+    struct sockaddr_in addr; 
+
+    if ((server::socket_fd = socket(PF_INET, SOCK_STREAM, getprotobyname("TCP"))) < 0)
     {
         std::cout << "ERROR: creation of socket fialed";
         return EXIT_FAILURE;
     }
     
+    // addr.sin
+
     bind(server::socket_fd, (struct sockaddr *)&add, sizeof(addr))
 }

@@ -114,3 +114,5 @@ IRC protocol have  a core conceponents:
 
         IP Address → which machine on the network
         Port → which specific program/service on that machine
+
+        

@@ -1,4 +1,6 @@
-#include <sys/socket.h>
+#include <sys/socket.h> // for socket()
+#include <netinet/in.h> // for struct sockaddr_in 
+#include <netdb.h> // for getprotobyname
 #include <iostream>
 
 class server

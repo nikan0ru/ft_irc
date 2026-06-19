@@ -3,8 +3,6 @@
 
 server::server():  socket_fd(-1), myPort("9000"),reuse_flag(1)
 {
-    int status = creat_sokect();
-    (void)(status);
 }
 
 int server::creat_sokect()

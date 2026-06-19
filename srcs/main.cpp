@@ -5,4 +5,7 @@
 int main()
 {
     server a;
+    if (a.creat_sokect() == EXIT_FAILURE)
+        return 1;
+    
 }

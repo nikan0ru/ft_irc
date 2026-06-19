@@ -5,5 +5,4 @@
 int main()
 {
     server a;
-    a.creat_sokect();
 }

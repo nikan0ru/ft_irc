@@ -40,7 +40,7 @@ int server::creat_sokect()
     
     if ( bind(this->socket_fd, serverinfo->ai_addr, serverinfo->ai_addrlen) ==  -1)
     {
-        std::cout << "ERROR: bind the socket failed\n";
+        std::cout << "ERROR: bind the socket failed: "<< serverinfo->ai_addr<<  strerror(errno) << "\n";
         freeaddrinfo(serverinfo);
         return EXIT_FAILURE;
     }

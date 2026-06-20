@@ -11,9 +11,11 @@ class server
         int socket_fd;
         char myPort[5];
         int reuse_flag;
+        int client_fd;
     public:
         server();
         ~server();
         int creat_sokect();
+        int listen_and_accept();
 
 };

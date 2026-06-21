@@ -63,6 +63,11 @@ void server::closeAllFds()
         std::cout << "Client (" << clients[i].getFD() << ") Disconnected\n";
         close(clients[i].getFD());
     }
+    if (this->socket_fd != -1)
+    {
+        std::cout << "Server (" << this->socket_fd << ") Disconnected\n";
+        close(this->socket_fd);
+    }
 }
 
 int server::acceptNewClient()
@@ -103,10 +108,12 @@ int server::acceptNewClient()
     return EXIT_SUCCESS;
 }
 
-int server::handelNewData()
-{
-    return EXIT_SUCCESS;
-}
+// int server::handelNewData()
+// {
+//     client newClient;
+//     std::memset(&newClient., 0, sizeof(client));
+//     return EXIT_SUCCESS;
+// }
 
 int server::procces_connections()
 {
@@ -118,10 +125,6 @@ int server::procces_connections()
                 return this->acceptNewClient();
             else
                 return this->handelNewData();
-        }
-        else
-        {
-            return EXIT_FAILURE;
         }
     }
     return EXIT_SUCCESS;

@@ -1,12 +1,12 @@
 NAME = ircserv
 
-SRCS = ./srcs/main.cpp ./srcs/server.cpp
+SRCS = ./srcs/main.cpp ./srcs/server.cpp ./srcs/client.cpp
 
 FLAGS = -Wall -Wextra -Werror -std=c++98 -MMD
 
 OBJS = $(SRCS:.cpp=.o)
 
-DEPS = $(OBJS:.o=.d)
+DEPS = $(OBJS:.o=.txt)
 
 CXX = c++
 

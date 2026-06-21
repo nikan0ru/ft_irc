@@ -1,8 +1,11 @@
 
 #include "../includes/server.hpp"
 
-server::server():  socket_fd(-1), myPort("8080"),reuse_flag(1), client_fd(-1)
+server::server(const std::string& portnum, const std::string& authpass):socket_fd(-1), reuse_flag(1),  
+                                                                        servport(portnum), client_fd(-1)
+                                                                        // servport(portnum),
 {
+    (void)(authpass);
 }
 
 int server::creat_sokect()
@@ -16,9 +19,9 @@ int server::creat_sokect()
     hints.ai_flags = AI_PASSIVE;
 
     
-    if (getaddrinfo(NULL, myPort, &hints, &serverinfo) != 0)
+    if (getaddrinfo(NULL, this->servport.c_str(), &hints, &serverinfo) != 0)
     {
-        std::cerr << "ERROR: getaddrinfo failed.\n";
+        std::cout << "ERROR: getaddrinfo failed.\n";
         return EXIT_FAILURE;
     }
     this->socket_fd = socket(serverinfo->ai_family, serverinfo->ai_socktype, serverinfo->ai_protocol);
@@ -29,11 +32,18 @@ int server::creat_sokect()
         return EXIT_FAILURE;
     }
 
-    if (setsockopt(socket_fd, SOL_SOCKET, SO_REUSEADDR, &this->reuse_flag, sizeof(this->reuse_flag)) == -1)
+    if (setsockopt(this->socket_fd, SOL_SOCKET, SO_REUSEADDR, &this->reuse_flag, sizeof(this->reuse_flag)) == -1)
     {
         std::cout << "ERROR: failed to reuse socket.\n";
         freeaddrinfo(serverinfo);
         return EXIT_FAILURE;
+    }
+
+    if (fcntl(this->socket_fd, F_SETFL, O_NONBLOCK) == -1)
+    {
+        std::cout << "ERROR: failed to set NONBLOCK for socket fd.\n";
+        freeaddrinfo(serverinfo);
+        return EXIT_FAILURE; 
     }
     
     if (bind(this->socket_fd, serverinfo->ai_addr, serverinfo->ai_addrlen) ==  -1)
@@ -46,7 +56,78 @@ int server::creat_sokect()
     return EXIT_SUCCESS;
 }
 
-int server::listen_and_accept()
+void server::closeAllFds()
+{
+    for (size_t i = 0; i < clients.size(); i++)
+    {
+        std::cout << "Client (" << clients[i].getFD() << ") Disconnected\n";
+        close(clients[i].getFD());
+    }
+}
+
+int server::acceptNewClient()
+{
+    struct sockaddr_storage newCli_inf;
+    client newClient;
+    socklen_t NewCli_sockaddr_size;
+
+    NewCli_sockaddr_size = sizeof(newCli_inf);
+    this->client_fd = accept(this->socket_fd, (struct sockaddr*)&newCli_inf, &NewCli_sockaddr_size);
+
+    if (this->client_fd == -1)
+    {
+        std::cout << "ERROR: accept clinet socket failed.\n";
+        return EXIT_FAILURE;
+    }
+
+    if (fcntl(this->client_fd, F_SETFL, O_NONBLOCK) == -1)
+    {
+        std::cout << "ERROR: failed to set NONBLOCK for socket fd.\n";
+        close(this->client_fd);
+        return EXIT_FAILURE; 
+    }
+
+    struct pollfd temp_pfd;
+    temp_pfd.fd = this->client_fd;
+    temp_pfd.events = POLLIN;
+    temp_pfd.revents = 0;
+
+    struct sockaddr_in *ipv4 = (struct sockaddr_in*)&newCli_inf;    
+    newClient.setFD(this->client_fd);
+    newClient.setIpAdd(inet_ntoa(ipv4->sin_addr));
+
+    this->clients.push_back(newClient);
+    this->pollfds.push_back(temp_pfd);
+	std::cout << "Client <" << this->client_fd << "> Connected\n";
+
+    return EXIT_SUCCESS;
+}
+
+int server::handelNewData()
+{
+    return EXIT_SUCCESS;
+}
+
+int server::procces_connections()
+{
+    for (size_t i = 0; i < pollfds.size(); i++)
+    {
+        if (pollfds[i].revents & POLLIN)
+        {
+            if (pollfds[i].fd == this->socket_fd)
+                return this->acceptNewClient();
+            else
+                return this->handelNewData();
+        }
+        else
+        {
+            return EXIT_FAILURE;
+        }
+    }
+    return EXIT_SUCCESS;
+}
+
+int server::listen_and_monitorfdstatus()
 {
     if (listen(this->socket_fd, SOMAXCONN) == -1)
     {
@@ -55,23 +136,26 @@ int server::listen_and_accept()
     }
     // may be i need handel signals here
 
-    std::cout << "server: waiting for connections...\n";
+    struct pollfd Newpollfd;
+    
+    Newpollfd.fd = this->socket_fd;
+    Newpollfd.events = POLLIN;
+    // Newpollfd.revents = 0; i can use it or not ??
 
-    struct sockaddr_storage client_sockaddr;
-    socklen_t client_sockaddr_size;
+    this->pollfds.push_back(Newpollfd);
+
+    std::cout << "server: waiting for connections...\n";
     while (1)
-    {// when the while stand and wait here or below
-        client_sockaddr_size = sizeof(client_sockaddr);
-        this->client_fd = accept(this->socket_fd, (struct sockaddr*)&client_sockaddr, &client_sockaddr_size);
-        if (this->client_fd < 0)
+    {
+        if (poll(&pollfds[0], pollfds.size(), -1) == -1)
         {
-            std::cout << "ERROR: accept clinet socket failed.\n";
+            std::cout << "pool failed";
             return EXIT_FAILURE;
         }
-
+        this->procces_connections();
     }
-    
-
+    closeAllFds();
+    return EXIT_SUCCESS;
 }
 
 server::~server(){};

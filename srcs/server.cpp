@@ -70,6 +70,57 @@ void server::closeAllFds()
     }
 }
 
+
+
+int server::listen_and_monitorfdstatus()
+{
+    if (listen(this->socket_fd, SOMAXCONN) == -1)
+    {
+        std::cout << "ERROR: Failed to start listening for incoming connections.\n";
+        return EXIT_FAILURE;
+    }
+    // may be i need handel signals here
+
+    struct pollfd Newpollfd;
+    
+    Newpollfd.fd = this->socket_fd;
+    Newpollfd.events = POLLIN;
+    // Newpollfd.revents = 0; i can use it or not ??
+
+    this->pollfds.push_back(Newpollfd);
+
+    std::cout << "server: waiting for connections...\n";
+    while (1)
+    {
+        if (poll(&pollfds[0], pollfds.size(), -1) == -1)
+        {
+            std::cout << "pool failed";
+            return EXIT_FAILURE;
+        }
+        this->procces_connections();
+    }
+    closeAllFds();
+    return EXIT_SUCCESS;
+}
+
+
+
+int server::procces_connections()
+{
+    for (size_t i = 0; i < pollfds.size(); i++)
+    {
+        if (pollfds[i].revents & POLLIN)
+        {
+            std::cout << "under poll revent\n";
+            if (pollfds[i].fd == this->socket_fd)
+                return this->acceptNewClient();
+            else
+                return this->handelNewData();
+        }
+    }
+    return EXIT_SUCCESS;
+}
+
 int server::acceptNewClient()
 {
     struct sockaddr_storage newCli_inf;
@@ -108,56 +159,11 @@ int server::acceptNewClient()
     return EXIT_SUCCESS;
 }
 
-// int server::handelNewData()
-// {
-//     client newClient;
-//     std::memset(&newClient., 0, sizeof(client));
-//     return EXIT_SUCCESS;
-// }
 
-int server::procces_connections()
+int server::handelNewData()
 {
-    for (size_t i = 0; i < pollfds.size(); i++)
-    {
-        if (pollfds[i].revents & POLLIN)
-        {
-            if (pollfds[i].fd == this->socket_fd)
-                return this->acceptNewClient();
-            else
-                return this->handelNewData();
-        }
-    }
-    return EXIT_SUCCESS;
-}
-
-int server::listen_and_monitorfdstatus()
-{
-    if (listen(this->socket_fd, SOMAXCONN) == -1)
-    {
-        std::cout << "ERROR: Failed to start listening for incoming connections.\n";
-        return EXIT_FAILURE;
-    }
-    // may be i need handel signals here
-
-    struct pollfd Newpollfd;
-    
-    Newpollfd.fd = this->socket_fd;
-    Newpollfd.events = POLLIN;
-    // Newpollfd.revents = 0; i can use it or not ??
-
-    this->pollfds.push_back(Newpollfd);
-
-    std::cout << "server: waiting for connections...\n";
-    while (1)
-    {
-        if (poll(&pollfds[0], pollfds.size(), -1) == -1)
-        {
-            std::cout << "pool failed";
-            return EXIT_FAILURE;
-        }
-        this->procces_connections();
-    }
-    closeAllFds();
+    char buffer[1024];
+        
     return EXIT_SUCCESS;
 }
 

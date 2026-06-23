@@ -39,12 +39,27 @@ int server::creat_sokect()
         return EXIT_FAILURE;
     }
 
+    // " You probably noticed that when you run listener, above, it just sits there until a packet arrives.
+    // What happened is that it called recvfrom(), there was no data, and so recvfrom() is said to “block” 
+    // (that is, sleep there) until some data arrives.
+
+    // Lots of functions block. accept() blocks. All the recv() functions block.
+    // The reason they can do this is because they’re allowed to.
+    // When you first create the socket descriptor with socket(),
+    // the kernel sets it to blocking. If you don’t want a socket to be blocking,
+    // you have to make a call to fcntl() "
+
     if (fcntl(this->socket_fd, F_SETFL, O_NONBLOCK) == -1)
     {
         std::cout << "ERROR: failed to set NONBLOCK for socket fd.\n";
         freeaddrinfo(serverinfo);
         return EXIT_FAILURE; 
     }
+
+    // "Normally, recv() on a blocking socket blocks — your program just sits there frozen until data arrives.
+    // Once you set O_NONBLOCK, recv() (or read()) refuses to wait.
+    // If there's no data, it returns immediately with -1,
+    // and sets errno to EAGAIN or EWOULDBLOCK (which one depends on the OS/libc)"
     
     if (bind(this->socket_fd, serverinfo->ai_addr, serverinfo->ai_addrlen) ==  -1)
     {
@@ -74,6 +89,14 @@ void server::closeAllFds()
 
 int server::listen_and_monitorfdstatus()
 {
+    // second arg io listen It's the size of a small holding queue for connections that have finished
+    // the TCP handshake but that your program hasn't called accept() on yet using sockaddr_storage.
+    // The moment you accept() one,
+    // it leaves that queue — it doesn't count against the limit anymore.
+    /*
+        * Maximum queue length specifiable by listen.
+        #define SOMAXCONN       128
+    */
     if (listen(this->socket_fd, SOMAXCONN) == -1)
     {
         std::cout << "ERROR: Failed to start listening for incoming connections.\n";

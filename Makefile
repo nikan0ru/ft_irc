@@ -6,7 +6,7 @@ FLAGS = -Wall -Wextra -Werror -std=c++98 -MMD
 
 OBJS = $(SRCS:.cpp=.o)
 
-DEPS = $(OBJS:.o=.txt)
+DEPS = $(OBJS:.o=.d)
 
 CXX = c++
 

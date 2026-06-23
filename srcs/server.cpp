@@ -162,8 +162,8 @@ int server::acceptNewClient()
 
 int server::handelNewData()
 {
-    char buffer[1024];
-        
+    // char buffer[1024];
+
     return EXIT_SUCCESS;
 }
 

@@ -201,7 +201,6 @@ std::vector<std::string> server::split_recved_buffer(std::string buff)
     int pos = 0;
     while (std::getline(text, token)) // \n\r
     {
-        std::cout << token << "\n";
         size_t cpos = token.find_first_of("\n\r");
         if (cpos != std::string::npos)
             token = token.substr(0, pos);
@@ -210,7 +209,14 @@ std::vector<std::string> server::split_recved_buffer(std::string buff)
     return cmds;
 }
 
-void server::parse_and_exe(std::string msg){(void)(msg);};
+void server::parse_and_exe(std::vector<std::string> msg){
+    
+    for (size_t i = 0; i < msg.size(); i++)
+    {
+        std::cout << msg[i] << "\n";
+    }
+
+};
 
 
 int server::handelNewData(int cliFd)
@@ -236,7 +242,8 @@ int server::handelNewData(int cliFd)
     {
         std::cout << "msg recved\n";
         currClient->clientSetBuff(split_recved_buffer(buffer));
-        this->parse_and_exe(buffer);
+        this->parse_and_exe(currClient->clientGetBuff());
+
         // if (currClient)
         //     currClient->buffer.clean();
     }

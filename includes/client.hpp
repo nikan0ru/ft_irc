@@ -15,6 +15,7 @@ class client
     public:
         client();
         void clientSetBuff(std::vector<std::string> buff);
+        std::vector<std::string> clientGetBuff();
         void setFD(int FD);
         void setIpAdd(std::string CIpAdd);
         int getFD();

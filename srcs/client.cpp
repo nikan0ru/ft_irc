@@ -23,4 +23,9 @@ void client::clientSetBuff(std::vector<std::string> buff)
     this->buffer = buff;
 }
 
+std::vector<std::string> client::clientGetBuff()
+{
+    return (this->buffer);
+}
+
 client::~client(){};

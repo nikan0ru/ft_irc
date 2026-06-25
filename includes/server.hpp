@@ -30,7 +30,7 @@ class server
         int procces_connections();
         int acceptNewClient();
         int handelNewData(int cliFd);
-        void parse_and_exe(std::string msg);
+        void parse_and_exe(std::vector<std::string> msg);
         std::vector<std::string> split_recved_buffer(std::string buff);
         void closeAllFds();
 };

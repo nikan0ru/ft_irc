@@ -7,6 +7,7 @@
 #include <poll.h>
 #include <fcntl.h>
 #include <iostream>
+#include <sstream>
 #include "client.hpp"
 #include <arpa/inet.h>
 
@@ -24,9 +25,12 @@ class server
         server(const std::string& portnum, const std::string& authpass);
         ~server();
         int creat_sokect();
+        client *getClient(int fd);
         int listen_and_monitorfdstatus();
         int procces_connections();
         int acceptNewClient();
-        int handelNewData();
+        int handelNewData(int cliFd);
+        void parse_and_exe(std::string msg);
+        std::vector<std::string> split_recved_buffer(std::string buff);
         void closeAllFds();
 };

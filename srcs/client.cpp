@@ -18,4 +18,9 @@ int client::getFD()
     return this->fd;
 };
 
+void client::clientSetBuff(std::vector<std::string> buff)
+{
+    this->buffer = buff;
+}
+
 client::~client(){};

@@ -8,6 +8,7 @@ server::server(const std::string& portnum, const std::string& authpass):socket_f
     (void)(authpass);
 }
 
+
 int server::creat_sokect()
 {
     struct addrinfo hints, *serverinfo;
@@ -134,11 +135,11 @@ int server::procces_connections()
     {
         if (pollfds[i].revents & POLLIN)
         {
-            std::cout << "under poll revent\n";
+            // std::cout << "under poll revent\n";
             if (pollfds[i].fd == this->socket_fd)
                 return this->acceptNewClient();
             else
-                return this->handelNewData();
+                return this->handelNewData(pollfds[i].fd);
         }
     }
     return EXIT_SUCCESS;
@@ -182,11 +183,57 @@ int server::acceptNewClient()
     return EXIT_SUCCESS;
 }
 
-
-int server::handelNewData()
+client *server::getClient(int fd)
 {
-    // char buffer[1024];
+    for (size_t i = 0; i < this->clients.size(); i++)
+    {
+        if (this->clients[i].getFD() == fd)
+            return &clients[i];
+    }
+    return NULL;
+}
 
+std::vector<std::string> server::split_recved_buffer(std::string buff)
+{
+    std::istringstream text(buff);
+    std::string token;
+    std::vector<std::string> cmds;
+    int pos = 0;
+    while (std::getline(text, token)) // \n\r
+    {
+        std::cout << token << "\n";
+        size_t cpos = token.find_first_of("\n\r");
+        if (cpos != std::string::npos)
+            token = token.substr(0, pos);
+        cmds.push_back(token);
+    }
+    return cmds;
+}
+
+void server::parse_and_exe(std::string msg){(void)(msg);};
+
+
+int server::handelNewData(int cliFd)
+{
+    char buffer[1024];
+    std::memset(buffer, 0, 1024);
+    int bytes = recv(cliFd, buffer, sizeof(buffer) -1, 0);
+    client *currClient = getClient(cliFd);
+    if (bytes <= 0)
+    {
+        if (bytes == -1)
+            std::cout << "no messages are available at the socket (maybe ctrlc or ctr..)\n";
+        else
+            std::cout << "he peer has performed an orderly shutdown.\n";
+    }
+    else
+    {
+        std::cout << "msg recved\n";
+        currClient->clientSetBuff(split_recved_buffer(buffer));
+        this->parse_and_exe(buffer);
+        // if (currClient)
+        //     currClient->buffer.clean();
+    }
     return EXIT_SUCCESS;
 }
 

@@ -222,9 +222,15 @@ int server::handelNewData(int cliFd)
     if (bytes <= 0)
     {
         if (bytes == -1)
+        {
             std::cout << "no messages are available at the socket (maybe ctrlc or ctr..)\n";
+            close(cliFd);
+        }
         else
+        {
             std::cout << "he peer has performed an orderly shutdown.\n";
+            close(cliFd);
+        }
     }
     else
     {

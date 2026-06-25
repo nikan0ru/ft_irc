@@ -1,7 +1,7 @@
 
 #include "../includes/server.hpp"
 
-server::server(const std::string& portnum, const std::string& authpass):socket_fd(-1), reuse_flag(1),  
+server::server(const std::string& portnum, const std::string& authpass):socket_fd(-1), reuse_flag(1),
                                                                         servport(portnum), client_fd(-1)
                                                                         // servport(portnum),
 {
@@ -19,7 +19,7 @@ int server::creat_sokect()
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_flags = AI_PASSIVE;
 
-    
+
     if (getaddrinfo(NULL, this->servport.c_str(), &hints, &serverinfo) != 0)
     {
         std::cout << "ERROR: getaddrinfo failed.\n";
@@ -41,7 +41,7 @@ int server::creat_sokect()
     }
 
     // " You probably noticed that when you run listener, above, it just sits there until a packet arrives.
-    // What happened is that it called recvfrom(), there was no data, and so recvfrom() is said to “block” 
+    // What happened is that it called recvfrom(), there was no data, and so recvfrom() is said to “block”
     // (that is, sleep there) until some data arrives.
 
     // Lots of functions block. accept() blocks. All the recv() functions block.
@@ -54,14 +54,14 @@ int server::creat_sokect()
     {
         std::cout << "ERROR: failed to set NONBLOCK for socket fd.\n";
         freeaddrinfo(serverinfo);
-        return EXIT_FAILURE; 
+        return EXIT_FAILURE;
     }
 
     // "Normally, recv() on a blocking socket blocks — your program just sits there frozen until data arrives.
     // Once you set O_NONBLOCK, recv() (or read()) refuses to wait.
     // If there's no data, it returns immediately with -1,
     // and sets errno to EAGAIN or EWOULDBLOCK (which one depends on the OS/libc)"
-    
+
     if (bind(this->socket_fd, serverinfo->ai_addr, serverinfo->ai_addrlen) ==  -1)
     {
         std::cout << "ERROR: bind the socket failed. " << "\n";
@@ -106,7 +106,7 @@ int server::listen_and_monitorfdstatus()
     // may be i need handel signals here
 
     struct pollfd Newpollfd;
-    
+
     Newpollfd.fd = this->socket_fd;
     Newpollfd.events = POLLIN;
     // Newpollfd.revents = 0; i can use it or not ??
@@ -164,7 +164,7 @@ int server::acceptNewClient()
     {
         std::cout << "ERROR: failed to set NONBLOCK for socket fd.\n";
         close(this->client_fd);
-        return EXIT_FAILURE; 
+        return EXIT_FAILURE;
     }
 
     struct pollfd temp_pfd;
@@ -172,7 +172,7 @@ int server::acceptNewClient()
     temp_pfd.events = POLLIN;
     temp_pfd.revents = 0;
 
-    struct sockaddr_in *ipv4 = (struct sockaddr_in*)&newCli_inf;    
+    struct sockaddr_in *ipv4 = (struct sockaddr_in*)&newCli_inf;
     newClient.setFD(this->client_fd);
     newClient.setIpAdd(inet_ntoa(ipv4->sin_addr));
 
@@ -210,7 +210,7 @@ std::vector<std::string> server::split_recved_buffer(std::string buff)
     return cmds;
 }
 
-void server::parse_and_exe(std::string msg){(void)(msg);};
+void server::parse_and_exe(std::vector<std::string> msg){(void)(msg);};
 
 
 int server::handelNewData(int cliFd)
@@ -236,7 +236,7 @@ int server::handelNewData(int cliFd)
     {
         std::cout << "msg recved\n";
         currClient->clientSetBuff(split_recved_buffer(buffer));
-        this->parse_and_exe(buffer);
+        this->parse_and_exe(currClient->buffer);
         // if (currClient)
         //     currClient->buffer.clean();
     }

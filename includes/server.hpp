@@ -1,5 +1,5 @@
 #include <sys/socket.h> // for socket()
-#include <netinet/in.h> // for struct sockaddr_in 
+#include <netinet/in.h> // for struct sockaddr_in
 #include <netdb.h> // for getprotobyname
 #include <unistd.h> // Required for gethostname
 #include <cstring>
@@ -30,7 +30,7 @@ class server
         int procces_connections();
         int acceptNewClient();
         int handelNewData(int cliFd);
-        void parse_and_exe(std::string msg);
+      	void server::parse_and_exe(std::vector<std::string> msg);
         std::vector<std::string> split_recved_buffer(std::string buff);
         void closeAllFds();
 };

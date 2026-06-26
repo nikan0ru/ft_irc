@@ -33,8 +33,11 @@ class server
         int procces_connections();
         int acceptNewClient();
         int handelNewData(int cliFd);
-      	void parse_and_exe(client *curr_client );
+      	void parse_and_exe(client *curClient, std::vector<std::string> splited_cmd);
         std::vector<std::string> split_recved_buffer(std::string buff);
-		Channel *getChannel(const std::string &name);
+        std::vector<std::string> splited_cmd(std::string& cmd);
         void closeAllFds();
+        void removeFd(int fd);
+        void removeClient(int fd);
+		void handleJoin(client * curr_client, std::vector<std::string> & command);
 };

@@ -30,7 +30,12 @@ class server
         int procces_connections();
         int acceptNewClient();
         int handelNewData(int cliFd);
-        void parse_and_exe(std::vector<std::string> msg);
+        void parse_and_exe(client *curClient, std::vector<std::string> splited_cmd);
         std::vector<std::string> split_recved_buffer(std::string buff);
+        std::vector<std::string> splited_cmd(std::string& cmd);
         void closeAllFds();
+        void removeFd(int fd);
+        void removeClient(int fd);
+
+
 };

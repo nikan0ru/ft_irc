@@ -17,6 +17,11 @@ int client::getFD()
 {
     return this->fd;
 };
+std::string client::getIpAdd()
+{
+    return this->IpAdd;
+};
+
 
 void client::clientSetBuff(std::vector<std::string> buff)
 {

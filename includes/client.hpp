@@ -18,6 +18,7 @@ class client
         std::vector<std::string> clientGetBuff();
         void setFD(int FD);
         void setIpAdd(std::string CIpAdd);
+        std::string getIpAdd();
         int getFD();
     
         ~client();

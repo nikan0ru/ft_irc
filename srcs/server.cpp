@@ -87,6 +87,26 @@ void server::closeAllFds()
 }
 
 
+void server::removeClient(int fd)
+{
+    for (size_t i = 0; i < clients.size(); i++)
+    {
+        if (clients[i].getFD() == fd)
+            clients.erase(clients.begin() + i);
+    }
+}
+
+
+void server::removeFd(int fd)
+{
+    for (size_t i = 0;i < pollfds.size(); i++)
+    {
+        if (pollfds[i].fd == fd)
+            pollfds.erase(pollfds.begin() + i);
+    }
+}
+
+
 
 int server::listen_and_monitorfdstatus()
 {
@@ -109,7 +129,7 @@ int server::listen_and_monitorfdstatus()
     
     Newpollfd.fd = this->socket_fd;
     Newpollfd.events = POLLIN;
-    // Newpollfd.revents = 0; i can use it or not ??
+    Newpollfd.revents = 0; //i can use it or not ??
 
     this->pollfds.push_back(Newpollfd);
 
@@ -137,9 +157,9 @@ int server::procces_connections()
         {
             // std::cout << "under poll revent\n";
             if (pollfds[i].fd == this->socket_fd)
-                return this->acceptNewClient();
+                this->acceptNewClient();
             else
-                return this->handelNewData(pollfds[i].fd);
+                this->handelNewData(pollfds[i].fd);
         }
     }
     return EXIT_SUCCESS;
@@ -174,7 +194,9 @@ int server::acceptNewClient()
 
     struct sockaddr_in *ipv4 = (struct sockaddr_in*)&newCli_inf;    
     newClient.setFD(this->client_fd);
+    // std::cout << newClien << "\n";
     newClient.setIpAdd(inet_ntoa(ipv4->sin_addr));
+    std::cout << newClient.getIpAdd() << "\n";
 
     this->clients.push_back(newClient);
     this->pollfds.push_back(temp_pfd);
@@ -198,24 +220,34 @@ std::vector<std::string> server::split_recved_buffer(std::string buff)
     std::istringstream text(buff);
     std::string token;
     std::vector<std::string> cmds;
-    int pos = 0;
     while (std::getline(text, token)) // \n\r
     {
         size_t cpos = token.find_first_of("\n\r");
         if (cpos != std::string::npos)
-            token = token.substr(0, pos);
+            token = token.substr(0, cpos);
+        std::cout << token << "\n";
         cmds.push_back(token);
     }
     return cmds;
 }
 
-void server::parse_and_exe(std::vector<std::string> msg){
-    
-    for (size_t i = 0; i < msg.size(); i++)
+std::vector<std::string> server::splited_cmd(std::string& cmd)
+{
+    std::istringstream msg(cmd);
+    std::vector<std::string> vec;
+    std::string word;
+    while (msg >> word)
     {
-        std::cout << msg[i] << "\n";
+        std::cout << word << "\n";
+        vec.push_back(word);
     }
+    return vec;
+}
 
+void server::parse_and_exe(client *curClient, std::vector<std::string> splited_cmd)
+{
+    (void)(splited_cmd);
+    (void)(curClient);
 };
 
 
@@ -224,28 +256,30 @@ int server::handelNewData(int cliFd)
     char buffer[1024];
     std::memset(buffer, 0, 1024);
     int bytes = recv(cliFd, buffer, sizeof(buffer) -1, 0);
+    std::vector<std::string> msg;
     client *currClient = getClient(cliFd);
     if (bytes <= 0)
     {
         if (bytes == -1)
         {
             std::cout << "no messages are available at the socket (maybe ctrlc or ctr..)\n";
-            close(cliFd);
+            return EXIT_SUCCESS;
         }
-        else
-        {
-            std::cout << "he peer has performed an orderly shutdown.\n";
-            close(cliFd);
-        }
+        std::cout << "he peer has performed an orderly shutdown.\n";
+        removeClient(cliFd);
+        removeFd(cliFd);
+        close(cliFd);
     }
     else
     {
         std::cout << "msg recved\n";
         currClient->clientSetBuff(split_recved_buffer(buffer));
-        this->parse_and_exe(currClient->clientGetBuff());
-
-        // if (currClient)
-        //     currClient->buffer.clean();
+        msg = currClient->clientGetBuff();
+        for (size_t i =0; i < msg.size(); i++) 
+        {
+            if (!msg[i].empty())
+                parse_and_exe(currClient, splited_cmd(msg[i]));
+        }
     }
     return EXIT_SUCCESS;
 }

@@ -210,7 +210,11 @@ std::vector<std::string> server::split_recved_buffer(std::string buff)
     return cmds;
 }
 
-void server::parse_and_exe(std::vector<std::string> msg){(void)(msg);};
+void server::parse_and_exe(client* curr_client)
+{
+	// std::cout << "This is command ";
+	// std::cout << curr_client->getBuffer() << std::endl;
+};
 
 
 int server::handelNewData(int cliFd)
@@ -236,7 +240,8 @@ int server::handelNewData(int cliFd)
     {
         std::cout << "msg recved\n";
         currClient->clientSetBuff(split_recved_buffer(buffer));
-        this->parse_and_exe(currClient->buffer);
+		std::cout << split_recved_buffer(buffer)[0];
+        this->parse_and_exe(currClient);
         // if (currClient)
         //     currClient->buffer.clean();
     }

@@ -1,5 +1,3 @@
-
-
 #include "../includes/server.hpp"
 
 int main(int ac, char *av[])
@@ -11,3 +9,5 @@ int main(int ac, char *av[])
         return EXIT_FAILURE;
     a.listen_and_monitorfdstatus();
 }
+
+

@@ -4,12 +4,14 @@
 #include <unistd.h> // Required for gethostname
 #include <cstring>
 #include <vector>
+#include <map>
 #include <poll.h>
 #include <fcntl.h>
 #include <iostream>
 #include <sstream>
-#include "client.hpp"
 #include <arpa/inet.h>
+#include "client.hpp"
+#include "channel.hpp"
 
 class server
 {
@@ -21,6 +23,7 @@ class server
         int client_fd;
         std::vector<struct pollfd> pollfds;
         std::vector<client> clients;
+		std::map<std::string, Channel *> Channels;
     public:
         server(const std::string& portnum, const std::string& authpass);
         ~server();
@@ -30,7 +33,8 @@ class server
         int procces_connections();
         int acceptNewClient();
         int handelNewData(int cliFd);
-      	void server::parse_and_exe(std::vector<std::string> msg);
+      	void parse_and_exe(client *curr_client );
         std::vector<std::string> split_recved_buffer(std::string buff);
+		Channel *getChannel(const std::string &name);
         void closeAllFds();
 };

@@ -10,35 +10,19 @@ class Channel
 {
 private:
 	std::string name;
+	std::string topic;
 	int memberCount;
 	std::vector<client *> members;
 	std::vector<client *> operators;
 
 public:
-	Channel(std::string n): name(n), memberCount(0)
-	{
-
-	}
-	std::vector<client *> & getMembers()
-	{
-		return this->members;
-	}
-	void addMember(client * clnt)
-	{
-		if(this->memberCount == 0)
-			this->operators.push_back(clnt);
-		this->members.push_back(clnt);
-		memberCount++;
-	}
-	bool isOperator(client &clnt)
-	{
-		for (size_t i = 0; i < this->operators.size(); i++)
-		{
-			if (this->operators.at(i) == &clnt)
-				return true;
-		}
-		return false;
-	}
+	Channel(std::string n);
+	~Channel();
+	std::vector<client *> & getMembers();
+	void addMember(client * clnt);
+	bool isOperator(client &clnt);
+	const std::string &getChannelName() const;
 
 };
+bool validateChannelName(std::string name);
 #endif

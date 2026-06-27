@@ -253,6 +253,16 @@ void server::parse_and_exe(client *curClient, std::vector<std::string> splited_c
 
 void server::handleJoin(client * curr_client, std::vector<std::string> & command)
 {
+	if(command.size() < 2)
+	{
+		std::cout << "Missing arguments" << std::endl;
+		return;
+	}
+	if(!validateChannelName(command[1]))
+	{
+		std::cout << command[1] << " is not a valid Channel Name" << std::endl;
+		return;
+	}
 	std::map<std::string, Channel *>::iterator it;
 	it = this->Channels.find(command[1]);
 	if(it == this->Channels.end())
@@ -264,8 +274,8 @@ void server::handleJoin(client * curr_client, std::vector<std::string> & command
 	else{
 		std::cout << "flavor text" <<  std::flush;
 	}
-	int i= 0;
 	std::vector<client *> members =this->Channels[command[1]]->getMembers();
+	unsigned long i =0;
 	while (i < members.size())
 	{
 		std::cout << members[i]->getUserName() << std::endl;

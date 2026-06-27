@@ -1,6 +1,6 @@
 NAME = ircserv
 
-SRCS = ./srcs/main.cpp ./srcs/server.cpp ./srcs/client.cpp
+SRCS = ./srcs/main.cpp ./srcs/server.cpp ./srcs/client.cpp ./srcs/channel.cpp
 
 FLAGS = -Wall -Wextra -std=c++98 -MMD
 

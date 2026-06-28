@@ -23,7 +23,7 @@ class server
         int client_fd;
         std::vector<struct pollfd> pollfds;
         std::vector<client> clients;
-		std::map<std::string, Channel *> Channels;
+		std::map<std::string, Channel> Channels;
     public:
         server(const std::string& portnum, const std::string& authpass);
         ~server();
@@ -40,4 +40,5 @@ class server
         void removeFd(int fd);
         void removeClient(int fd);
 		void handleJoin(client * curr_client, std::vector<std::string> & command);
+		void handleTopic(client * curr_client, std::vector<std::string> & command);
 };

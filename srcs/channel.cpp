@@ -24,9 +24,24 @@ bool Channel::isOperator(client &clnt)
 	}
 	return false;
 }
+
+bool Channel::isMember(client &clnt)
+{
+	for (size_t i = 0; i < this->operators.size(); i++)
+	{
+		if (this->operators.at(i) == &clnt)
+			return true;
+	}
+	return false;
+}
+
 const std::string& Channel::getChannelName() const
 {
 	return this->name;
+}
+const std::string &Channel::getTopic() const
+{
+	return this->topic;
 }
 
 Channel::~Channel()
@@ -36,7 +51,7 @@ Channel::~Channel()
 
 bool validateChannelName(std::string name)
 {
-	if(name[0] != '#')
+	if(name[0] != '#' && name[0] != '&')
 		return 0;
 	for (size_t i = 0; i < name.size(); i++)
 	{

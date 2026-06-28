@@ -249,41 +249,88 @@ void server::parse_and_exe(client *curClient, std::vector<std::string> splited_c
 	Command = splited_cmd[0];
 	if(!Command.compare("JOIN"))
 		server::handleJoin(curClient, splited_cmd);
+	if(!Command.compare("TOPIC"))
+		server::handleTopic(curClient, splited_cmd);
 };
 
 void server::handleJoin(client * curr_client, std::vector<std::string> & command)
 {
+	std::string response;
 	if(command.size() < 2)
 	{
-		std::cout << "Missing arguments" << std::endl;
+		response = ":ircserv " + curr_client->getUserName() + " " + command[0] + " :Not enough parameters 461";
+		send(curr_client->getFD(), response.c_str(), response.length(), 0);
 		return;
 	}
+	Channel targetChannel(command[1]);
 	if(!validateChannelName(command[1]))
 	{
 		std::cout << command[1] << " is not a valid Channel Name" << std::endl;
+		response = ":ircserv " + curr_client->getUserName() + " " + command[0] + " :Bad Channel Mask 476";
+		send(curr_client->getFD(), response.c_str(), response.length(), 0);
 		return;
 	}
-	std::map<std::string, Channel *>::iterator it;
+	std::map<std::string, Channel>::iterator it;
 	it = this->Channels.find(command[1]);
 	if(it == this->Channels.end())
 	{
-		std::cout << "creating channel" << std::endl;
-		this->Channels[command[1]] = new Channel(command[1]);
-		this->Channels[command[1]]->addMember(curr_client);
+		std::cout << "creating channel working" << std::endl;
+		this->Channels.insert(std::make_pair(command[1], targetChannel));
+		// this->Channels[command[1]].addMember(curr_client);
+		for (std::map<std::string, Channel>::iterator it = this->Channels.begin(); it != this->Channels.end(); it++)
+		{
+			if (it->first == command[1])
+			{
+				it->second.addMember(curr_client);
+				std::cout << std::boolalpha << it->second.isOperator(*curr_client) << std::endl;
+			}
+		}
 	}
 	else{
 		std::cout << "flavor text" <<  std::flush;
 	}
-	std::vector<client *> members =this->Channels[command[1]]->getMembers();
-	unsigned long i =0;
-	while (i < members.size())
-	{
-		std::cout << members[i]->getUserName() << std::endl;
-		i++;
-	}
+	// std::vector<client *> members =this->Channels[command[1]].getMembers();
+	// unsigned long i =0;
+	// while (i < members.size())
+	// {
+	// 	std::cout << members[i]->getUserName() << std::endl;
+	// 	i++;
+	// }
 
 }
 
+void server::handleTopic(client * curr_client, std::vector<std::string> & command)
+{
+	std::string response;
+	if(command.size() < 2)
+	{
+		response = ":ircserv " + curr_client->getUserName() + " " + command[0] + " :Not enough parameters 461";
+		send(curr_client->getFD(), response.c_str(), response.length(), 0);
+		return;
+	}
+	std::map<std::string, Channel>::iterator it = this->Channels.find(command[1]);
+	if(it == this->Channels.end())
+	{
+		response = curr_client->getUserName() + " " + command[1] + " :No such channel 403";
+		send(curr_client->getFD(), response.c_str(), response.length(), 0);
+		return;
+	}
+	if(!it->second.isMember(*curr_client))
+	{
+		response = curr_client->getUserName() + " " + command[1] + " :You're not on that channel 442";
+		send(curr_client->getFD(), response.c_str(), response.length(), 0);
+		return;
+	}
+	if(it->second.getTopic().empty())
+	{
+		response = curr_client->getUserName() + " " + command[1] + " :No topic is set 331";
+		send(curr_client->getFD(), response.c_str(), response.length(), 0);
+		return;
+	}
+	response = curr_client->getUserName() + " " + command[1] + " :" + it->second.getTopic();
+	send(curr_client->getFD(), response.c_str(), response.length(), 0);
+
+}
 
 
 int server::handelNewData(int cliFd)

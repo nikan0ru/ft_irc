@@ -16,8 +16,9 @@ class client
         std::string password;
         // bool authentication;
     public:
-         client();
+        client();
         void clientSetBuff(std::vector<std::string> buff);
+		const std::string &getUserName();
         std::vector<std::string> clientGetBuff();
         void setFD(int FD);
         void setIpAdd(std::string CIpAdd);
@@ -25,9 +26,5 @@ class client
         int getFD();
 
         ~client();
-		const std::string &getUserName()
-		{
-			return this->userName;
-		}
 };
 #endif

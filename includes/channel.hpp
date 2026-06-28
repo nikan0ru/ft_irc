@@ -1,7 +1,6 @@
 #ifndef CHANNEL_HPP
 #define	CHANNEL_HPP
 
-
 #include <string>
 #include <vector>
 #include "client.hpp"
@@ -20,8 +19,10 @@ public:
 	~Channel();
 	std::vector<client *> & getMembers();
 	void addMember(client * clnt);
+	bool isMember(client &clnt);
 	bool isOperator(client &clnt);
 	const std::string &getChannelName() const;
+	const std::string &getTopic() const;
 
 };
 bool validateChannelName(std::string name);

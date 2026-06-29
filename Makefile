@@ -1,26 +1,33 @@
-CPP=c++
+NAME = ircserv
 
-CPPFLAGS= -Wall -Wextra 
-RM= rm -rf
+SRCS = ./srcs/main.cpp ./srcs/server.cpp ./srcs/client.cpp ./srcs/channel.cpp
 
-SRC= main.cpp
+FLAGS = -Wall -Wextra -std=c++98 -MMD
 
-OBJ= $(SRC:.cpp=.o)
+OBJS = $(SRCS:.cpp=.o)
 
-NAME= ircserv
+DEPS = $(OBJS:.o=.d)
+
+CXX = c++
+
+RM = rm -rf
 
 all: $(NAME)
 
-$(NAME):$(OBJ)
-	$(CPP) $(CPPFLAGS)  -o $@ $^
-
 %.o: %.cpp
-	$(CPP) $(CPPFLAGS) -c $< -o $@
+	$(CXX) $(FLAGS) -c $< -o $@
+
+$(NAME): $(OBJS)
+	$(CXX) $(FLAGS) $(OBJS) -o $(NAME)
 
 clean:
-	$(RM) $(OBJ)
+	$(RM) $(OBJS) $(DEPS)
 
-fclean : clean
+fclean: clean
 	$(RM) $(NAME)
 
 re: fclean all
+
+-include $(DEPS)
+
+.PHONY: all clean fclean re

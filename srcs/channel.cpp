@@ -1,18 +1,22 @@
 #include "../includes/channel.hpp"
+#include <iostream>
 
 Channel::Channel(std::string n) : name(n), memberCount(0)
 {
 }
 
-std::vector<client *> & Channel::getMembers()
+void Channel::getMembers()
 {
-	return this->members;
+	for (size_t i = 0 ; i < this->members.size(); i++)
+		std::cout << this->members[i] << "sasa"<< std::endl;
+	// return this->members;
 }
 void Channel::addMember(client *clnt)
 {
 	if (this->memberCount == 0)
 		this->operators.push_back(clnt);
 	this->members.push_back(clnt);
+	std::cout << members[0];
 	memberCount++;
 }
 bool Channel::isOperator(client &clnt)

@@ -1,7 +1,8 @@
 
 #include "../includes/client.hpp"
 
-client::client(){};
+client::client() : authentication(false)
+{};
 
 void client::setFD(int FD)
 {
@@ -22,6 +23,16 @@ std::string client::getIpAdd()
 const std::string &client::getUserName()
 {
 	return this->userName;
+}
+
+bool client::isAuthenticat()
+{
+    return authentication;
+}
+
+void client::setAsAuthenticated()
+{
+    authentication = true;
 }
 
 void client::clientSetBuff(std::vector<std::string> buff)

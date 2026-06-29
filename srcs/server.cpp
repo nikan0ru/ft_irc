@@ -109,7 +109,7 @@ void server::removeFd(int fd)
 
 int server::listen_and_monitorfdstatus()
 {
-    // second arg io listen It's the size of a small holding queue for connections that have finished
+    // second arg in listen It's the size of a small holding queue for connections that have finished
     // the TCP handshake but that your program hasn't called accept() on yet using sockaddr_storage.
     // The moment you accept() one,
     // it leaves that queue — it doesn't count against the limit anymore.
@@ -122,7 +122,7 @@ int server::listen_and_monitorfdstatus()
         std::cout << "ERROR: Failed to start listening for incoming connections.\n";
         return EXIT_FAILURE;
     }
-    // may be i need handel signals here
+    // may be i need to handel signals here
 
     struct pollfd Newpollfd;
 
@@ -154,7 +154,6 @@ int server::procces_connections()
     {
         if (pollfds[i].revents & POLLIN)
         {
-            // std::cout << "under poll revent\n";
             if (pollfds[i].fd == this->socket_fd)
                 this->acceptNewClient();
             else
@@ -193,14 +192,46 @@ int server::acceptNewClient()
 
     struct sockaddr_in *ipv4 = (struct sockaddr_in*)&newCli_inf;
     newClient.setFD(this->client_fd);
-    // std::cout << newClien << "\n";
     newClient.setIpAdd(inet_ntoa(ipv4->sin_addr));
-    std::cout << newClient.getIpAdd() << "\n";
 
     this->clients.push_back(newClient);
     this->pollfds.push_back(temp_pfd);
 	std::cout << "Client <" << this->client_fd << "> Connected\n";
 
+    return EXIT_SUCCESS;
+}
+
+
+int server::handelNewData(int cliFd)
+{
+    char buffer[1024];
+    std::memset(buffer, 0, 1024);
+    int bytes = recv(cliFd, buffer, sizeof(buffer) -1, 0);
+    std::vector<std::string> msg;
+    client *currClient = getClient(cliFd);
+    if (bytes <= 0)
+    {
+        if (bytes == -1)
+        {
+            std::cout << "no messages are available at the socket (maybe ctrlc or ctr..)\n";
+            return EXIT_SUCCESS;
+        }
+        std::cout << "he peer has performed an orderly shutdown.\n";
+        removeClient(cliFd);
+        removeFd(cliFd);
+        close(cliFd);
+    }
+    else
+    {
+        std::cout << "msg recved\n";
+        currClient->clientSetBuff(split_recved_buffer(buffer));
+        msg = currClient->clientGetBuff();
+        for (size_t i =0; i < msg.size(); i++)
+        {
+            if (!msg[i].empty())
+                parse_and_exe(currClient, splited_cmd(msg[i]));
+        }
+    }
     return EXIT_SUCCESS;
 }
 
@@ -235,22 +266,35 @@ std::vector<std::string> server::splited_cmd(std::string& cmd)
     std::vector<std::string> vec;
     std::string word;
     while (msg >> word)
-    {
         vec.push_back(word);
-    }
     return vec;
 }
 
 void server::parse_and_exe(client *curClient, std::vector<std::string> splited_cmd)
 {
 	std::string Command;
-
+    std::cout << this->servpass << "\n";
 	Command = splited_cmd[0];
+    if (!curClient->isAuthenticat() && (!Command.compare("USER") 
+            || !Command.compare("NICK") || !Command.compare("PASS")))
+        handelAuthentication(curClient, splited_cmd);
 	if(!Command.compare("JOIN"))
 		server::handleJoin(curClient, splited_cmd);
 	if(!Command.compare("TOPIC"))
 		server::handleTopic(curClient, splited_cmd);
 };
+
+void server::handelAuthentication(client* curr_client, std::vector<std::string>& cmd)
+{
+    int last_cmd = cmd.size() -1;
+    curr_client->setAsAuthenticated();
+    if (!cmd[last_cmd].compare(this->servpass))
+    {
+        
+    }
+    (void)curr_client;
+    (void)cmd;
+}
 
 void server::handleJoin(client * curr_client, std::vector<std::string> & command)
 {
@@ -274,16 +318,7 @@ void server::handleJoin(client * curr_client, std::vector<std::string> & command
 	if(it == this->Channels.end())
 	{
 		std::cout << "creating channel working" << std::endl;
-		this->Channels.insert(std::make_pair(command[1], targetChannel));
-		// this->Channels[command[1]].addMember(curr_client);
-		for (std::map<std::string, Channel>::iterator it = this->Channels.begin(); it != this->Channels.end(); it++)
-		{
-			if (it->first == command[1])
-			{
-				it->second.addMember(curr_client);
-				std::cout << std::boolalpha << it->second.isOperator(*curr_client) << std::endl;
-			}
-		}
+		targetChannel.addMember(curr_client);
 	}
 	else{
 		std::cout << "flavor text" <<  std::flush;
@@ -355,37 +390,5 @@ void server::manageTopic(client * curr_client, std::vector<std::string> & comman
 }
 
 
-int server::handelNewData(int cliFd)
-{
-    char buffer[1024];
-    std::memset(buffer, 0, 1024);
-    int bytes = recv(cliFd, buffer, sizeof(buffer) -1, 0);
-    std::vector<std::string> msg;
-    client *currClient = getClient(cliFd);
-    if (bytes <= 0)
-    {
-        if (bytes == -1)
-        {
-            std::cout << "no messages are available at the socket (maybe ctrlc or ctr..)\n";
-            return EXIT_SUCCESS;
-        }
-        std::cout << "he peer has performed an orderly shutdown.\n";
-        removeClient(cliFd);
-        removeFd(cliFd);
-        close(cliFd);
-    }
-    else
-    {
-        std::cout << "msg recved\n";
-        currClient->clientSetBuff(split_recved_buffer(buffer));
-        msg = currClient->clientGetBuff();
-        for (size_t i =0; i < msg.size(); i++)
-        {
-            if (!msg[i].empty())
-                parse_and_exe(currClient, splited_cmd(msg[i]));
-        }
-    }
-    return EXIT_SUCCESS;
-}
 
 server::~server(){};

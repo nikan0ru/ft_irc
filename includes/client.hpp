@@ -14,16 +14,18 @@ class client
         std::vector<std::string> buffer;
 		std::set<std::string> channelsJoined;
         std::string password;
-        // bool authentication;
+        bool authentication;
     public:
         client();
         void clientSetBuff(std::vector<std::string> buff);
-    		const std::string &getUserName();
+    	const std::string &getUserName();
         std::vector<std::string> clientGetBuff();
         void setFD(int FD);
         void setIpAdd(std::string CIpAdd);
+        void setAsAuthenticated();
         std::string getIpAdd();
         int getFD();
+        bool isAuthenticat();
 
         ~client();
 };

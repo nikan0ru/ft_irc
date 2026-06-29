@@ -16,8 +16,9 @@ private:
 
 public:
 	Channel(std::string n);
+	Channel(){};
 	~Channel();
-	std::vector<client *> & getMembers();
+	void getMembers();
 	void addMember(client * clnt);
 	bool isMember(client &clnt);
 	bool isOperator(client &clnt);

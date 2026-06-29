@@ -2,10 +2,9 @@
 #include "../includes/server.hpp"
 
 server::server(const std::string& portnum, const std::string& authpass):socket_fd(-1), reuse_flag(1),  
-                                                                        servport(portnum), client_fd(-1)
-                                                                        // servport(portnum),
+                                                                        servport(portnum),servpass(authpass), client_fd(-1)
+                                                                        
 {
-    (void)(authpass);
 }
 
 
@@ -194,7 +193,6 @@ int server::acceptNewClient()
 
     struct sockaddr_in *ipv4 = (struct sockaddr_in*)&newCli_inf;    
     newClient.setFD(this->client_fd);
-    // std::cout << newClien << "\n";
     newClient.setIpAdd(inet_ntoa(ipv4->sin_addr));
     std::cout << newClient.getIpAdd() << "\n";
 
@@ -220,12 +218,11 @@ std::vector<std::string> server::split_recved_buffer(std::string buff)
     std::istringstream text(buff);
     std::string token;
     std::vector<std::string> cmds;
-    while (std::getline(text, token)) // \n\r
+    while (std::getline(text, token))
     {
         size_t cpos = token.find_first_of("\n\r");
         if (cpos != std::string::npos)
             token = token.substr(0, cpos);
-        std::cout << token << "\n";
         cmds.push_back(token);
     }
     return cmds;
@@ -238,7 +235,6 @@ std::vector<std::string> server::splited_cmd(std::string& cmd)
     std::string word;
     while (msg >> word)
     {
-        std::cout << word << "\n";
         vec.push_back(word);
     }
     return vec;
@@ -246,6 +242,10 @@ std::vector<std::string> server::splited_cmd(std::string& cmd)
 
 void server::parse_and_exe(client *curClient, std::vector<std::string> splited_cmd)
 {
+    // [PRVITMSG, INVITE, AUTH]
+    (void)(this->servpass);
+    for (size_t i = 0 ; i < splited_cmd.size(); i++)
+        std::cout << splited_cmd[i] << "\n";
     (void)(splited_cmd);
     (void)(curClient);
 };

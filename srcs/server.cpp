@@ -18,7 +18,7 @@ int server::creat_sokect()
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_flags = AI_PASSIVE;
 
-    
+
     if (getaddrinfo(NULL, this->servport.c_str(), &hints, &serverinfo) != 0)
     {
         std::cout << "ERROR: getaddrinfo failed.\n";
@@ -40,7 +40,7 @@ int server::creat_sokect()
     }
 
     // " You probably noticed that when you run listener, above, it just sits there until a packet arrives.
-    // What happened is that it called recvfrom(), there was no data, and so recvfrom() is said to “block” 
+    // What happened is that it called recvfrom(), there was no data, and so recvfrom() is said to “block”
     // (that is, sleep there) until some data arrives.
 
     // Lots of functions block. accept() blocks. All the recv() functions block.
@@ -53,14 +53,14 @@ int server::creat_sokect()
     {
         std::cout << "ERROR: failed to set NONBLOCK for socket fd.\n";
         freeaddrinfo(serverinfo);
-        return EXIT_FAILURE; 
+        return EXIT_FAILURE;
     }
 
     // "Normally, recv() on a blocking socket blocks — your program just sits there frozen until data arrives.
     // Once you set O_NONBLOCK, recv() (or read()) refuses to wait.
     // If there's no data, it returns immediately with -1,
     // and sets errno to EAGAIN or EWOULDBLOCK (which one depends on the OS/libc)"
-    
+
     if (bind(this->socket_fd, serverinfo->ai_addr, serverinfo->ai_addrlen) ==  -1)
     {
         std::cout << "ERROR: bind the socket failed. " << "\n";
@@ -125,7 +125,7 @@ int server::listen_and_monitorfdstatus()
     // may be i need handel signals here
 
     struct pollfd Newpollfd;
-    
+
     Newpollfd.fd = this->socket_fd;
     Newpollfd.events = POLLIN;
     Newpollfd.revents = 0; //i can use it or not ??
@@ -183,7 +183,7 @@ int server::acceptNewClient()
     {
         std::cout << "ERROR: failed to set NONBLOCK for socket fd.\n";
         close(this->client_fd);
-        return EXIT_FAILURE; 
+        return EXIT_FAILURE;
     }
 
     struct pollfd temp_pfd;
@@ -191,8 +191,9 @@ int server::acceptNewClient()
     temp_pfd.events = POLLIN;
     temp_pfd.revents = 0;
 
-    struct sockaddr_in *ipv4 = (struct sockaddr_in*)&newCli_inf;    
+    struct sockaddr_in *ipv4 = (struct sockaddr_in*)&newCli_inf;
     newClient.setFD(this->client_fd);
+    // std::cout << newClien << "\n";
     newClient.setIpAdd(inet_ntoa(ipv4->sin_addr));
     std::cout << newClient.getIpAdd() << "\n";
 
@@ -242,13 +243,116 @@ std::vector<std::string> server::splited_cmd(std::string& cmd)
 
 void server::parse_and_exe(client *curClient, std::vector<std::string> splited_cmd)
 {
-    // [PRVITMSG, INVITE, AUTH]
-    (void)(this->servpass);
-    for (size_t i = 0 ; i < splited_cmd.size(); i++)
-        std::cout << splited_cmd[i] << "\n";
-    (void)(splited_cmd);
-    (void)(curClient);
+	std::string Command;
+
+	Command = splited_cmd[0];
+	if(!Command.compare("JOIN"))
+		server::handleJoin(curClient, splited_cmd);
+	if(!Command.compare("TOPIC"))
+		server::handleTopic(curClient, splited_cmd);
 };
+
+void server::handleJoin(client * curr_client, std::vector<std::string> & command)
+{
+	std::string response;
+	if(command.size() < 2)
+	{
+		response = ":ircserv " + curr_client->getUserName() + " " + command[0] + " :Not enough parameters 461";
+		send(curr_client->getFD(), response.c_str(), response.length(), 0);
+		return;
+	}
+	Channel targetChannel(command[1]);
+	if(!validateChannelName(command[1]))
+	{
+		std::cout << command[1] << " is not a valid Channel Name" << std::endl;
+		response = ":ircserv " + curr_client->getUserName() + " " + command[0] + " :Bad Channel Mask 476";
+		send(curr_client->getFD(), response.c_str(), response.length(), 0);
+		return;
+	}
+	std::map<std::string, Channel>::iterator it;
+	it = this->Channels.find(command[1]);
+	if(it == this->Channels.end())
+	{
+		std::cout << "creating channel working" << std::endl;
+		this->Channels.insert(std::make_pair(command[1], targetChannel));
+		// this->Channels[command[1]].addMember(curr_client);
+		for (std::map<std::string, Channel>::iterator it = this->Channels.begin(); it != this->Channels.end(); it++)
+		{
+			if (it->first == command[1])
+			{
+				it->second.addMember(curr_client);
+				std::cout << std::boolalpha << it->second.isOperator(*curr_client) << std::endl;
+			}
+		}
+	}
+	else{
+		std::cout << "flavor text" <<  std::flush;
+	}
+	// std::vector<client *> members =this->Channels[command[1]].getMembers();
+	// unsigned long i =0;
+	// while (i < members.size())
+	// {
+	// 	std::cout << members[i]->getUserName() << std::endl;
+	// 	i++;
+	// }
+
+}
+
+void server::handleTopic(client * curr_client, std::vector<std::string> & command)
+{
+	std::string response;
+	std::map<std::string, Channel>::iterator it;
+
+	if(command.size() < 2)
+	{
+		response = ":ircserv " + curr_client->getUserName() + " " + command[0] + " :Not enough parameters 461";
+		send(curr_client->getFD(), response.c_str(), response.length(), 0);
+		return;
+	}
+	response = curr_client->getUserName() + " " + command[1];
+	it = this->Channels.find(command[1]);
+	if(it == this->Channels.end())
+	{
+		response.append(" :No such channel 403");
+		send(curr_client->getFD(), response.c_str(), response.length(), 0);
+		return;
+	}
+	if(!it->second.isMember(*curr_client))
+	{
+		response.append(" :You're not on that channel 442");
+		send(curr_client->getFD(), response.c_str(), response.length(), 0);
+		return;
+	}
+	if(command.size() > 2)
+	{
+		server::manageTopic(curr_client, command);
+		return;
+	}
+	if(it->second.getTopic().empty())
+		response.append(" :No topic is set 331");
+	else
+		response.append(" :" + it->second.getTopic());
+	send(curr_client->getFD(), response.c_str(), response.length(), 0);
+}
+
+void server::manageTopic(client * curr_client, std::vector<std::string> & command)
+{
+	std::string newTopic;
+
+	(void)curr_client;
+	if(command[2][0] == ':' && command[2].length() == 1)
+	{
+	// 	this->Channels[command[1]].clearTopic();
+		return;
+	}
+	for (size_t i = 2; i < command.size(); i++)
+	{
+		newTopic.append(command[i]);
+	}
+	std::cout << newTopic << "   here " << std::endl;
+
+
+}
 
 
 int server::handelNewData(int cliFd)
@@ -275,7 +379,7 @@ int server::handelNewData(int cliFd)
         std::cout << "msg recved\n";
         currClient->clientSetBuff(split_recved_buffer(buffer));
         msg = currClient->clientGetBuff();
-        for (size_t i =0; i < msg.size(); i++) 
+        for (size_t i =0; i < msg.size(); i++)
         {
             if (!msg[i].empty())
                 parse_and_exe(currClient, splited_cmd(msg[i]));

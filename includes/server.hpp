@@ -17,7 +17,7 @@ class server
         int socket_fd;
         int reuse_flag;
         const std::string& servport;
-        // const std::string& servpass;
+        const std::string& servpass;
         int client_fd;
         std::vector<struct pollfd> pollfds;
         std::vector<client> clients;

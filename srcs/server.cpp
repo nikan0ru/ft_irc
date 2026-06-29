@@ -286,12 +286,11 @@ void server::parse_and_exe(client *curClient, std::vector<std::string> splited_c
 
 void server::handelAuthentication(client* curr_client, std::vector<std::string>& cmd)
 {
-    int last_cmd = cmd.size() -1;
-    curr_client->setAsAuthenticated();
-    if (!cmd[last_cmd].compare(this->servpass))
-    {
-        
-    }
+    // int last_cmd = cmd.size() -1; 
+    // if (!cmd[last_cmd].compare(this->servpass))
+    // {// }
+    if (!Command.compare("PASS"))
+        // curr_client.se
     (void)curr_client;
     (void)cmd;
 }

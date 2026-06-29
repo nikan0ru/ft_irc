@@ -12,14 +12,19 @@ void client::setIpAdd(std::string CIpAdd)
 {
     this->IpAdd = CIpAdd;
 }
+
 int client::getFD()
 {
     return this->fd;
 };
+
 std::string client::getIpAdd()
 {
     return this->IpAdd;
 };
+
+
+
 const std::string &client::getUserName()
 {
 	return this->userName;

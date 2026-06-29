@@ -1,11 +1,10 @@
 
 #include "../includes/server.hpp"
 
-server::server(const std::string& portnum, const std::string& authpass):socket_fd(-1), reuse_flag(1),
-                                                                        servport(portnum), client_fd(-1)
-                                                                        // servport(portnum),
+server::server(const std::string& portnum, const std::string& authpass):socket_fd(-1), reuse_flag(1),  
+                                                                        servport(portnum),servpass(authpass), client_fd(-1)
+                                                                        
 {
-    (void)(authpass);
 }
 
 
@@ -220,7 +219,7 @@ std::vector<std::string> server::split_recved_buffer(std::string buff)
     std::istringstream text(buff);
     std::string token;
     std::vector<std::string> cmds;
-    while (std::getline(text, token)) // \n\r
+    while (std::getline(text, token))
     {
         size_t cpos = token.find_first_of("\n\r");
         if (cpos != std::string::npos)

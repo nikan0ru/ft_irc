@@ -1,13 +1,11 @@
 
-
-
 #include "../includes/client.hpp"
 
 client::client(){};
 
 void client::setFD(int FD)
 {
-    this->fd = FD; 
+    this->fd = FD;
 }
 void client::setIpAdd(std::string CIpAdd)
 {
@@ -21,7 +19,10 @@ std::string client::getIpAdd()
 {
     return this->IpAdd;
 };
-
+const std::string &client::getUserName()
+{
+	return this->userName;
+}
 
 void client::clientSetBuff(std::vector<std::string> buff)
 {

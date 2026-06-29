@@ -41,4 +41,6 @@ class server
         void removeClient(int fd);
 		void handleJoin(client * curr_client, std::vector<std::string> & command);
 		void handleTopic(client * curr_client, std::vector<std::string> & command);
+		void manageTopic(client * curr_client, std::vector<std::string> & command);
+
 };

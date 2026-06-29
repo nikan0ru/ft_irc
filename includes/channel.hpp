@@ -23,6 +23,8 @@ public:
 	bool isOperator(client &clnt);
 	const std::string &getChannelName() const;
 	const std::string &getTopic() const;
+	void setTopic(std::string topic);
+	void clearTopic();
 
 };
 bool validateChannelName(std::string name);

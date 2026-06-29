@@ -13,7 +13,7 @@ RFC 2813	Server-to-server protocol; read mainly to confirm it is out of scope.
 
 # JOIN
 # MODE
-# INVITE
+# TOPIC
 # KICK
 
 

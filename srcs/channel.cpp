@@ -44,6 +44,16 @@ const std::string &Channel::getTopic() const
 	return this->topic;
 }
 
+void Channel::setTopic(std::string newTopic)
+{
+	this->topic = newTopic;
+}
+
+void Channel::clearTopic()
+{
+	this->topic.clear();
+}
+
 Channel::~Channel()
 {
 

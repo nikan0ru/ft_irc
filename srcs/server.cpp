@@ -302,33 +302,56 @@ void server::handleJoin(client * curr_client, std::vector<std::string> & command
 void server::handleTopic(client * curr_client, std::vector<std::string> & command)
 {
 	std::string response;
+	std::map<std::string, Channel>::iterator it;
+
 	if(command.size() < 2)
 	{
 		response = ":ircserv " + curr_client->getUserName() + " " + command[0] + " :Not enough parameters 461";
 		send(curr_client->getFD(), response.c_str(), response.length(), 0);
 		return;
 	}
-	std::map<std::string, Channel>::iterator it = this->Channels.find(command[1]);
+	response = curr_client->getUserName() + " " + command[1];
+	it = this->Channels.find(command[1]);
 	if(it == this->Channels.end())
 	{
-		response = curr_client->getUserName() + " " + command[1] + " :No such channel 403";
+		response.append(" :No such channel 403");
 		send(curr_client->getFD(), response.c_str(), response.length(), 0);
 		return;
 	}
 	if(!it->second.isMember(*curr_client))
 	{
-		response = curr_client->getUserName() + " " + command[1] + " :You're not on that channel 442";
+		response.append(" :You're not on that channel 442");
 		send(curr_client->getFD(), response.c_str(), response.length(), 0);
+		return;
+	}
+	if(command.size() > 2)
+	{
+		server::manageTopic(curr_client, command);
 		return;
 	}
 	if(it->second.getTopic().empty())
+		response.append(" :No topic is set 331");
+	else
+		response.append(" :" + it->second.getTopic());
+	send(curr_client->getFD(), response.c_str(), response.length(), 0);
+}
+
+void server::manageTopic(client * curr_client, std::vector<std::string> & command)
+{
+	std::string newTopic;
+
+	(void)curr_client;
+	if(command[2][0] == ':' && command[2].length() == 1)
 	{
-		response = curr_client->getUserName() + " " + command[1] + " :No topic is set 331";
-		send(curr_client->getFD(), response.c_str(), response.length(), 0);
+	// 	this->Channels[command[1]].clearTopic();
 		return;
 	}
-	response = curr_client->getUserName() + " " + command[1] + " :" + it->second.getTopic();
-	send(curr_client->getFD(), response.c_str(), response.length(), 0);
+	for (size_t i = 2; i < command.size(); i++)
+	{
+		newTopic.append(command[i]);
+	}
+	std::cout << newTopic << "   here " << std::endl;
+
 
 }
 

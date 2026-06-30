@@ -1,37 +1,36 @@
 #include "../includes/channel.hpp"
 
-Channel::Channel(std::string n) : name(n), memberCount(0)
+Channel::Channel(std::string n) : name(n)
 {
 }
 
-std::vector<client *> & Channel::getMembers()
+const std::set<int> & Channel::getMembers() const
 {
 	return this->members;
 }
-void Channel::addMember(client *clnt)
+void Channel::addMember(int clientFd)
 {
-	if (this->memberCount == 0)
-		this->operators.push_back(clnt);
-	this->members.push_back(clnt);
-	memberCount++;
+	if (this->members.size() == 0)
+		this->operators.insert(clientFd);
+	this->members.insert(clientFd);
 }
-bool Channel::isOperator(client &clnt)
+bool Channel::isOperator(int clientFd)
 {
-	for (size_t i = 0; i < this->operators.size(); i++)
-	{
-		if (this->operators.at(i) == &clnt)
-			return true;
-	}
+	std::set<int>::iterator it;
+
+	it = this->operators.find(clientFd);
+	if(it != this->operators.end())
+		return true;
 	return false;
 }
 
-bool Channel::isMember(client &clnt)
+bool Channel::isMember(int clientFd)
 {
-	for (size_t i = 0; i < this->operators.size(); i++)
-	{
-		if (this->operators.at(i) == &clnt)
-			return true;
-	}
+	std::set<int>::iterator it;
+
+	it = this->members.find(clientFd);
+	if(it != this->members.end())
+		return true;
 	return false;
 }
 
@@ -59,14 +58,18 @@ Channel::~Channel()
 
 }
 
+
+
 bool validateChannelName(std::string name)
 {
+	if(name.empty())
+		return false;
 	if(name[0] != '#' && name[0] != '&')
-		return 0;
+		return false;
 	for (size_t i = 0; i < name.size(); i++)
 	{
 		if(name[i] == ' ' || name[i] == ',' || name[i] == '\a')
-			return 0;
+			return false;
 	}
-	return 1;
+	return true;
 }

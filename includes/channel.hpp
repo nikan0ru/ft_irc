@@ -10,17 +10,16 @@ class Channel
 private:
 	std::string name;
 	std::string topic;
-	int memberCount;
-	std::vector<client *> members;
-	std::vector<client *> operators;
+	std::set<int> members;
+	std::set<int> operators;
 
 public:
 	Channel(std::string n);
 	~Channel();
-	std::vector<client *> & getMembers();
-	void addMember(client * clnt);
-	bool isMember(client &clnt);
-	bool isOperator(client &clnt);
+	const std::set<int> & getMembers() const;
+	void addMember(int clientFd);
+	bool isMember(int clientFd);
+	bool isOperator(int clientFd);
 	const std::string &getChannelName() const;
 	const std::string &getTopic() const;
 	void setTopic(std::string topic);

@@ -1,7 +1,8 @@
 #include "../includes/channel.hpp"
 
-Channel::Channel(std::string n) : name(n)
+Channel::Channel(std::string n) : name(n), isLocked(false), hasLimit(false), isInviteOnly(false), isTopicRestricted(false)
 {
+
 }
 
 const std::set<int> & Channel::getMembers() const
@@ -14,6 +15,14 @@ void Channel::addMember(int clientFd)
 		this->operators.insert(clientFd);
 	this->members.insert(clientFd);
 }
+
+void Channel::removeMember(int clientFd)
+{
+	this->members.erase(clientFd);
+	if(this->isOperator(clientFd))
+		this->operators.erase(clientFd);
+}
+
 bool Channel::isOperator(int clientFd)
 {
 	std::set<int>::iterator it;
@@ -34,6 +43,22 @@ bool Channel::isMember(int clientFd)
 	return false;
 }
 
+bool Channel::isInvited(int clientFd)
+{
+	std::set<int>::iterator it;
+
+	it = this->invited.find(clientFd);
+	if(it != this->invited.end())
+		return true;
+	return false;
+}
+
+const int Channel::getMaxLimit() const
+{
+	return this->MaxLimit;
+}
+
+
 const std::string& Channel::getChannelName() const
 {
 	return this->name;
@@ -41,6 +66,23 @@ const std::string& Channel::getChannelName() const
 const std::string &Channel::getTopic() const
 {
 	return this->topic;
+}
+
+bool Channel::IsLocked() const
+{
+	return this->Locked;
+}
+bool Channel::IsInviteOnly() const
+{
+	return this->InviteOnly;
+}
+bool Channel::IsTopicRestricted() const
+{
+	return this->TopicRestricted;
+}
+bool Channel::isLimited() const
+{
+	return this->Limited;
 }
 
 void Channel::setTopic(std::string newTopic)

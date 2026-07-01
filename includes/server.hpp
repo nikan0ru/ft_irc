@@ -42,6 +42,7 @@ class server
 	  	void handleJoin(client * curr_client, std::vector<std::string> & command);
 		void handleTopic(client * curr_client, std::vector<std::string> & command);
 		void manageTopic(client * curr_client, std::vector<std::string> & command);
+		void handleJoin0(client *currentClient);
 
 };
-void sendMessage(client * currentClient, std::string command, std::string message,std::string errCode);
+void sendErrorMessage(client * currentClient, std::string command, std::string message,std::string errCode);

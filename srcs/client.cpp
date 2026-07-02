@@ -77,5 +77,11 @@ void client::setAuthenRequirment(int id)
         this->hasUser = true;
 }
 
+bool client::checkAuthenRequirment()
+{
+    if (this->hasNick == true && hasUser==true && passOk == true)
+        return true;
+    return false;
+};
 
 client::~client(){};

@@ -33,6 +33,7 @@ class client
         int getFD();
         bool isAuthenticat();
         void setAuthenRequirment(int id);
+        bool checkAuthenRequirment();
 
         ~client();
 };

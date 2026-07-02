@@ -325,6 +325,10 @@ void server::handelAuthentication(client* curr_client, std::vector<std::string>&
         curr_client->setUserName(cmd[1]);
         std::cout << curr_client->getUserName() << "\n";
     }
+    // need to handel if servpass is empty and sent welcome numerics 
+    if (curr_client->checkAuthenRequirment() == true)
+        curr_client->setAsAuthenticated();
+    return;
 }
 
 void server::handleJoin(client * curr_client, std::vector<std::string> & command)

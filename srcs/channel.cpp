@@ -1,6 +1,6 @@
 #include "../includes/channel.hpp"
 
-Channel::Channel(std::string n) : name(n), isLocked(false), hasLimit(false), isInviteOnly(false), isTopicRestricted(false)
+Channel::Channel(std::string n) : name(n), topic(""), InviteOnly(false), TopicRestricted(false),Locked(false), Limited(false), MaxLimit(0)
 {
 
 }
@@ -53,7 +53,7 @@ bool Channel::isInvited(int clientFd)
 	return false;
 }
 
-const int Channel::getMaxLimit() const
+size_t Channel::getMaxLimit() const
 {
 	return this->MaxLimit;
 }
@@ -68,15 +68,15 @@ const std::string &Channel::getTopic() const
 	return this->topic;
 }
 
-bool Channel::IsLocked() const
+bool Channel::isLocked() const
 {
 	return this->Locked;
 }
-bool Channel::IsInviteOnly() const
+bool Channel::isInviteOnly() const
 {
 	return this->InviteOnly;
 }
-bool Channel::IsTopicRestricted() const
+bool Channel::isTopicRestricted() const
 {
 	return this->TopicRestricted;
 }

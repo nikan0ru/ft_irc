@@ -14,7 +14,7 @@ private:
 	bool TopicRestricted;
 	bool Locked;
 	bool Limited;
-	int MaxLimit;
+	size_t MaxLimit;
 	std::set<int> members;
 	std::set<int> operators;
 	std::set<int> invited;
@@ -26,12 +26,12 @@ public:
 	void removeMember(int clientFd);
 	bool isMember(int clientFd);
 	bool isOperator(int clientFd);
-	bool IsLocked() const;
-	bool IsInviteOnly() const;
-	bool IsInvited() ;
-	bool IsTopicRestricted() const;
+	bool isInvited(int clientFd) ;
+	bool isLocked() const;
+	bool isInviteOnly() const;
+	bool isTopicRestricted() const;
 	bool isLimited() const;
-	const int getMaxLimit() const;
+	size_t getMaxLimit() const;
 	const std::string &getChannelName() const;
 	const std::string &getTopic() const;
 	void setTopic(std::string topic);

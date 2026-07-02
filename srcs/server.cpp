@@ -265,8 +265,12 @@ std::vector<std::string> server::splited_cmd(std::string& cmd)
     std::istringstream msg(cmd);
     std::vector<std::string> vec;
     std::string word;
+    int i = 0;
     while (msg >> word)
+    {
         vec.push_back(word);
+        std::cout <<"<"<< vec[i++]<<">\n";
+    }
     return vec;
 }
 
@@ -286,13 +290,41 @@ void server::parse_and_exe(client *curClient, std::vector<std::string> splited_c
 
 void server::handelAuthentication(client* curr_client, std::vector<std::string>& cmd)
 {
-    // int last_cmd = cmd.size() -1; 
-    // if (!cmd[last_cmd].compare(this->servpass))
-    // {// }
-    if (!Command.compare("PASS"))
-        // curr_client.se
-    (void)curr_client;
-    (void)cmd;
+    int cmdsize = cmd.size();
+    if (!cmd[0].compare("PASS"))
+    {
+        if (cmdsize < 2)
+            return (std::cout << "PASS: ERR_NEEDMOREPARAMS (461)\n", void());
+        if (curr_client->isAuthenticat())
+            return (std::cout << "ERR_ALREADYREGISTRED (462)\n", void());
+        if (cmd[1].compare(this->servpass))
+            return (std::cout << "ERR_PASSWDMISMATCH (464)\n", void());
+        curr_client->setAuthenRequirment(1);
+    }
+    else if (!cmd[0].compare("NICK"))
+    {
+        if (cmdsize < 2)
+            return (std::cout << "NICK: ERR_NONICKNAMEGIVEN (431)\n", void());
+        // must handel nick name requirment
+        for (size_t i = 0 ; i < this->clients.size(); i++)
+        {
+            if (clients[i].getNickName() == cmd[1])
+                return (std::cout << "NICK: ERR_NICKNAMEINUSE (433)\n", void());
+        }
+        curr_client->setAuthenRequirment(2);
+        curr_client->setNickName(cmd[1]);
+        std::cout << curr_client->getNickName() << "\n";
+    }
+    else
+    {
+        if (cmdsize < 5)
+            return (std::cout << "USER: ERR_NEEDMOREPARAMS (461)\n", void());
+        if (curr_client->isAuthenticat())
+            return (std::cout << "USER: ERR_ALREADYREGISTRED (462)\n", void());
+        curr_client->setAuthenRequirment(3);
+        curr_client->setUserName(cmd[1]);
+        std::cout << curr_client->getUserName() << "\n";
+    }
 }
 
 void server::handleJoin(client * curr_client, std::vector<std::string> & command)

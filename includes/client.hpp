@@ -8,8 +8,8 @@ class client
 {
     private:
         int fd;
-        std::string nickName;
-		std::string userName;
+        std::string nickname;
+		std::string username;
         std::string IpAdd;
         std::vector<std::string> buffer;
 		std::set<std::string> channelsJoined;
@@ -21,8 +21,8 @@ class client
     public:
         client();
         void clientSetBuff(std::vector<std::string> buff);
-    	const std::string &getUserName() const;
-    	const std::string &getNickName() const;
+    	const std::string &getUserName();
+    	const std::string &getNickName();
         std::vector<std::string> clientGetBuff();
         void setFD(int FD);
         void setIpAdd(std::string CIpAdd);

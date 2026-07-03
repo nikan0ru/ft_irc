@@ -8,9 +8,7 @@ Channel::Channel(std::string n) : name(n), topic(""), InviteOnly(false), TopicRe
 
 const std::set<int> & Channel::getMembers() const
 {
-	for (size_t i = 0 ; i < this->members.size(); i++)
-		std::cout << this->members[i] << "sasa"<< std::endl;
-	// return this->members;
+	return this->members;
 }
 void Channel::addMember(int clientFd)
 {

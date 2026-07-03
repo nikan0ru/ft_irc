@@ -15,12 +15,12 @@ void client::setIpAdd(std::string CIpAdd)
 
 void client::setNickName(std::string nickName)
 {
-    this->nickname = nickName;
+    this->nickName = nickName;
 }
 
 void client::setUserName(std::string userName)
 {
-    this->username = userName;
+    this->userName = userName;
 }
 
 
@@ -35,12 +35,12 @@ std::string client::getIpAdd()
 };
 const std::string &client::getUserName() const
 {
-	return this->username;
+	return this->userName;
 }
 
-const std::string &client::getNickName()
+const std::string &client::getNickName() const
 {
-	return this->nickname;
+	return this->nickName;
 }
 
 
@@ -58,11 +58,6 @@ void client::setPassStatusFalse()
 {
     this->passOk = false;
 };
-
-const std::string &client::getNickName() const
-{
-	return this->nickName;
-}
 
 void client::clientSetBuff(std::vector<std::string> buff)
 {

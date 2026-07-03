@@ -10,6 +10,7 @@ class Channel
 private:
 	std::string name;
 	std::string topic;
+	std::string channelKey;
 	bool InviteOnly;
 	bool TopicRestricted;
 	bool Locked;
@@ -32,6 +33,7 @@ public:
 	bool isTopicRestricted() const;
 	bool isLimited() const;
 	size_t getMaxLimit() const;
+	const std::string &getChannelKey() const;
 	const std::string &getChannelName() const;
 	const std::string &getTopic() const;
 	void setTopic(std::string topic);
@@ -39,4 +41,5 @@ public:
 
 };
 bool validateChannelName(std::string name);
+std::vector<std::string> splitArgument(std::string & arguments);
 #endif

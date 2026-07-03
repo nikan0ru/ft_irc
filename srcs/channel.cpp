@@ -68,6 +68,11 @@ const std::string &Channel::getTopic() const
 	return this->topic;
 }
 
+const std::string &Channel::getChannelKey() const
+{
+	return this->channelKey;
+}
+
 bool Channel::isLocked() const
 {
 	return this->Locked;
@@ -100,8 +105,6 @@ Channel::~Channel()
 
 }
 
-
-
 bool validateChannelName(std::string name)
 {
 	if(name.empty())
@@ -114,4 +117,25 @@ bool validateChannelName(std::string name)
 			return false;
 	}
 	return true;
+}
+
+std::vector<std::string> splitArgument(std::string & arguments)
+{
+	std::vector<std::string> splitArgs;
+	size_t start;
+	size_t comma;
+
+	start = 0;
+	while (true)
+	{
+		comma = arguments.find(',', start);
+		if(comma == std::string::npos)
+		{
+			splitArgs.push_back(arguments.substr(start));
+			break;
+		}
+		splitArgs.push_back(arguments.substr(start, comma - start));
+		start = comma + 1;
+	}
+	return splitArgs;
 }

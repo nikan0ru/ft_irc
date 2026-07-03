@@ -291,11 +291,9 @@ void server::handleJoin0(client *currentClient)
 
 void server::handleJoin(client * currentClient, std::vector<std::string> & command)
 {
-	std::string rawChannels;
-	std::string keys;
-	std::string temp;
+	std::vector<std::string> keys;
 	std::vector <std::string> channels;
-	size_t j;
+	std::string temp;
 
 	if(command.size() < 2)
 	{
@@ -307,58 +305,47 @@ void server::handleJoin(client * currentClient, std::vector<std::string> & comma
 		handleJoin0(currentClient);
 		return;
 	}
-	rawChannels = command[1];
-	keys = command[2];
-	j = 0;
-	for (size_t i = 0; i < rawChannels.length(); i++)
+	channels = splitArgument(command[1]);
+	keys = splitArgument(command[2]);
+
+	while (keys.size() < channels.size())
 	{
-		if(rawChannels[i] == '#' || rawChannels[i] == '&')
-		{
-			temp = "";
-			j =i;
-			while(j < rawChannels.length() && rawChannels[j] != ',')
-			{
-				temp +=(rawChannels[j]);
-				j++;
-			}
-			channels.push_back(temp);
-			std::cout << "Channel added " << std::endl;
-		}
+		keys.push_back("");
 	}
 	for (size_t i = 0; i < channels.size(); i++)
 	{
-		std::cout << "Channel == " <<channels[i] << std::endl;
+		handleSingleJoin(currentClient, channels[i], keys[i]);
 	}
 
 }
-void server::handleSingleJoin(client * currentClient, std::vector<std::string> & command)
+
+void server::handleSingleJoin(client * currentClient,std::string & channelName, std::string &channelKey)
 {
 	std::string reply;
 	std::map<std::string, Channel>::iterator it;
 	std::pair<std::map<std::string, Channel>::iterator, bool> result;
 
-
-	if(!validateChannelName(command[1]))
+	if(!validateChannelName(channelName))
 	{
-		sendErrorMessage(currentClient,command[1], " :Bad Channel Mask", "476");
+		sendErrorMessage(currentClient,channelName, " :Bad Channel Mask", "476");
 		return;
 	}
-	it = this->Channels.find(command[1]);
+	it = this->Channels.find(channelName);
 	if(it == this->Channels.end())
 	{
-		result = this->Channels.insert(std::make_pair(command[1], Channel(command[1])));
+		result = this->Channels.insert(std::make_pair(channelName, Channel(channelName)));
 		std::cout << "Channel created successfully!!!!! deleteme"<< std::endl;
 		it = result.first;
 		it->second.addMember(currentClient->getFD());
 	}
 	else
 	{
-		if(!server::checkChannelModes(currentClient, command[1], it))
+		if(!server::checkChannelModes(currentClient, channelName, channelKey, it))
 			return;
 		it->second.addMember(currentClient->getFD());
 	}
 	reply = ":" +currentClient->getNickName() + "!" + currentClient->getUserName() + "@"
-	+ currentClient->getIpAdd() + " JOIN " + command[1] +"\r\n";
+	+ currentClient->getIpAdd() + " JOIN " + channelName +"\r\n";
 	for (unsigned long i = 0; i < this->clients.size(); i++)
 	{
 		if(it->second.isMember(this->clients[i].getFD()))
@@ -370,13 +357,13 @@ void server::handleSingleJoin(client * currentClient, std::vector<std::string> &
 	if(!it->second.getTopic().empty())
 	{
 		reply = ":ircserv 332 " + currentClient->getNickName() + " "
-				+ command[1] + " :" + it->second.getTopic() + "\r\n";
+				+ channelName + " :" + it->second.getTopic() + "\r\n";
 		send(currentClient->getFD(), reply.c_str(), reply.size(), 0);
 	}
-	server::broadcastNamesList(currentClient,command[1],  it);
+	server::broadcastNamesList(currentClient,channelName,  it);
 }
 
-bool server::checkChannelModes(client *currentClient, std::string &channelName, std::map<std::string, Channel>::iterator &it)
+bool server::checkChannelModes(client *currentClient, std::string &channelName, std::string &channelKey, std::map<std::string, Channel>::iterator &it)
 {
 	if (it->second.isMember(currentClient->getFD()))
 	{
@@ -388,7 +375,7 @@ bool server::checkChannelModes(client *currentClient, std::string &channelName, 
 		sendErrorMessage(currentClient, channelName, " :Cannot join channel (+i)", "473");
 		return false;
 	}
-	if (it->second.isLocked()) // fix later
+	if (it->second.isLocked() && it->second.getChannelKey() != channelKey) // fix later
 	{
 		sendErrorMessage(currentClient, channelName, " :Cannot join channel (+k)", "475");
 		return false;
@@ -465,24 +452,11 @@ void server::handleTopic(client * currentClient, std::vector<std::string> & comm
 	}
 	response = currentClient->getNickName() + "?? " + command[1] + it->second.getTopic() + "\r\n";
 	send(currentClient->getFD(), response.c_str(), response.length(), 0);
-;
 }
 
 void server::manageTopic(client * curr_client, std::vector<std::string> & command)
 {
 	std::string newTopic;
-
-	(void)curr_client;
-	if(command[2][0] == ':' && command[2].length() == 1)
-	{
-	// 	this->Channels[command[1]].clearTopic();
-		return;
-	}
-	for (size_t i = 2; i < command.size(); i++)
-	{
-		newTopic.append(command[i]);
-	}
-	std::cout << newTopic << "   here " << std::endl;
 
 
 }

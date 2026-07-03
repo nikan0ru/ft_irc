@@ -41,11 +41,11 @@ class server
         void removeClient(int fd);
 	  	void handleJoin(client * curr_client, std::vector<std::string> & command);
 		void handleJoin0(client *currentClient);
-	  	void handleSingleJoin(client * curr_client, std::vector<std::string> & command);
+	  	void handleSingleJoin(client * curr_client, std::string & channelName, std::string &channelKey);
 		void handleTopic(client * curr_client, std::vector<std::string> & command);
 		void manageTopic(client * curr_client, std::vector<std::string> & command);
 		void broadcastNamesList(client * currentClient,std::string &command, std::map<std::string, Channel>::iterator &it);
-		bool checkChannelModes(client *currentClient, std::string &channelName,  std::map<std::string, Channel>::iterator &it);
+		bool checkChannelModes(client *currentClient, std::string &channelName, std::string &channelKey, std::map<std::string, Channel>::iterator &it);
 
 };
 void sendErrorMessage(client * currentClient, std::string command, std::string message,std::string errCode);

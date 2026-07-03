@@ -21,6 +21,7 @@ private:
 	std::set<int> invited;
 public:
 	Channel(std::string n);
+	Channel(){};
 	~Channel();
 	const std::set<int> & getMembers() const;
 	void addMember(int clientFd);

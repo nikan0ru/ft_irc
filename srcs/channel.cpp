@@ -1,4 +1,5 @@
 #include "../includes/channel.hpp"
+#include <iostream>
 
 Channel::Channel(std::string n) : name(n), topic(""), InviteOnly(false), TopicRestricted(false),Locked(false), Limited(false), MaxLimit(0)
 {

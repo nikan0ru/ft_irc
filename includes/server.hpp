@@ -43,5 +43,6 @@ class server
 	  	  void handleJoin(client * curr_client, std::vector<std::string> & command);
 		    void handleTopic(client * curr_client, std::vector<std::string> & command);
 		    void manageTopic(client * curr_client, std::vector<std::string> & command);
+        bool isValidNickName(std::string& nickName);
 
 };

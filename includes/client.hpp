@@ -27,6 +27,7 @@ class client
         void setFD(int FD);
         void setIpAdd(std::string CIpAdd);
         void setAsAuthenticated();
+        void setPassStatusFalse();
         void setNickName(std::string nickName);
         void setUserName(std::string userName);
         std::string getIpAdd();

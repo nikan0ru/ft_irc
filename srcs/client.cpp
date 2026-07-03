@@ -57,6 +57,12 @@ void client::setAsAuthenticated()
     authentication = true;
 }
 
+void client::setPassStatusFalse()
+{
+    this->passOk = false;
+};
+
+
 void client::clientSetBuff(std::vector<std::string> buff)
 {
     this->buffer = buff;

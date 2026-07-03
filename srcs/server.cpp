@@ -278,20 +278,63 @@ void server::parse_and_exe(client *curClient, std::vector<std::string> splited_c
 	if(splited_cmd.empty())
 		return;
 	Command = splited_cmd[0];
-	for (size_t i = 0; i < Command.length(); i++)
-	{
-		Command[i] = std::tolower(Command[i]);
-	}
-	if(!Command.compare("join"))
+    if ( (!Command.compare("USER") || !Command.compare("NICK") || !Command.compare("PASS")))
+        handelAuthentication(curClient, splited_cmd);
+	if(!Command.compare("JOIN"))
 		server::handleJoin(curClient, splited_cmd);
-	if(!Command.compare("topic"))
+	if(!Command.compare("TOPIC"))
 		server::handleTopic(curClient, splited_cmd);
 };
+
+
+void server::handelAuthentication(client* curr_client, std::vector<std::string>& cmd)
+{
+    int cmdsize = cmd.size();
+    if (!cmd[0].compare("PASS"))
+    {
+        if (curr_client->isAuthenticat())
+            return (std::cout << "ERR_ALREADYREGISTRED (462)\n", void());
+        if (cmdsize != 2)
+            return (std::cout << "PASS: ERR_NEEDMOREPARAMS (461)\n", void()); // what if the pasword contiene spaces
+        if (cmd[1].compare(this->servpass))
+            return (std::cout << "ERR_PASSWDMISMATCH (464)\n", curr_client->setPassStatusFalse(), void());
+        curr_client->setAuthenRequirment(1);
+    }
+    else if (!cmd[0].compare("NICK"))
+    {
+        if (cmdsize != 2)
+            return (std::cout << "NICK: ERR_NONICKNAMEGIVEN (431)\n", void());
+        if (!isValidNickName(cmd[1]))
+        {
+            return(std::cout << "NICK: ERR_ERRONEUSNICKNAME (432)\n", void());
+        }
+        for (size_t i = 0 ; i < this->clients.size(); i++)
+        {
+            if (clients[i].getNickName() == cmd[1] && clients[i].getFD() != curr_client->getFD())
+                return (std::cout << "NICK: ERR_NICKNAMEINUSE (433)\n", void());
+        }
+        curr_client->setNickName(cmd[1]);
+        curr_client->setAuthenRequirment(2);
+    }
+    else
+    {
+        if (cmdsize != 5)
+            return (std::cout << "USER: ERR_NEEDMOREPARAMS (461)\n", void());
+        if (curr_client->isAuthenticat())
+            return (std::cout << "USER: ERR_ALREADYREGISTRED (462)\n", void()); // user parse
+        curr_client->setUserName(cmd[1]);
+        curr_client->setAuthenRequirment(3);
+    }
+    if (curr_client->checkAuthenRequirment() == true && curr_client->isAuthenticat() == false)
+        curr_client->setAsAuthenticated();
+    return;
+}
 
 void server::handleJoin0(client *currentClient)
 {
 	std::string message;
 	std::map<std::string, Channel>::iterator channelIt;
+
 
 	for (std::map<std::string, Channel>::iterator it = this->Channels.begin(); it != this->Channels.end(); it++)
 	{

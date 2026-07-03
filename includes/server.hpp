@@ -40,9 +40,14 @@ class server
         void removeFd(int fd);
         void removeClient(int fd);
         void handelAuthentication(client* curr_client, std::vector<std::string>& cmd);
-	  	  void handleJoin(client * curr_client, std::vector<std::string> & command);
-		    void handleTopic(client * curr_client, std::vector<std::string> & command);
-		    void manageTopic(client * curr_client, std::vector<std::string> & command);
         bool isValidNickName(std::string& nickName);
+	  	void handleJoin(client * curr_client, std::vector<std::string> & command);
+		void handleJoin0(client *currentClient);
+	  	void handleSingleJoin(client * curr_client, std::string & channelName, std::string &channelKey);
+		void handleTopic(client * curr_client, std::vector<std::string> & command);
+		void manageTopic(client * curr_client, std::vector<std::string> & command);
+		void broadcastNamesList(client * currentClient,std::string &command, std::map<std::string, Channel>::iterator &it);
+		bool checkChannelModes(client *currentClient, std::string &channelName, std::string &channelKey, std::map<std::string, Channel>::iterator &it);
 
 };
+void sendErrorMessage(client * currentClient, std::string command, std::string message,std::string errCode);

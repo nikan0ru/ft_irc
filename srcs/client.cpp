@@ -33,10 +33,7 @@ std::string client::getIpAdd()
 {
     return this->IpAdd;
 };
-
-
-
-const std::string &client::getUserName()
+const std::string &client::getUserName() const
 {
 	return this->username;
 }
@@ -62,6 +59,10 @@ void client::setPassStatusFalse()
     this->passOk = false;
 };
 
+const std::string &client::getNickName() const
+{
+	return this->nickName;
+}
 
 void client::clientSetBuff(std::vector<std::string> buff)
 {

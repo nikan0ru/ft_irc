@@ -1,7 +1,8 @@
 
 #include "../includes/client.hpp"
 
-client::client(){};
+client::client() : authentication(false), passOk(false), hasNick(false), hasUser(false)
+{};
 
 void client::setFD(int FD)
 {
@@ -11,18 +12,56 @@ void client::setIpAdd(std::string CIpAdd)
 {
     this->IpAdd = CIpAdd;
 }
+
+void client::setNickName(std::string nickName)
+{
+    this->nickname = nickName;
+}
+
+void client::setUserName(std::string userName)
+{
+    this->username = userName;
+}
+
+
 int client::getFD()
 {
     return this->fd;
 };
+
 std::string client::getIpAdd()
 {
     return this->IpAdd;
 };
+
+
+
 const std::string &client::getUserName()
 {
-	return this->userName;
+	return this->username;
 }
+
+const std::string &client::getNickName()
+{
+	return this->nickname;
+}
+
+
+bool client::isAuthenticat()
+{
+    return authentication;
+}
+
+void client::setAsAuthenticated()
+{
+    authentication = true;
+}
+
+void client::setPassStatusFalse()
+{
+    this->passOk = false;
+};
+
 
 void client::clientSetBuff(std::vector<std::string> buff)
 {
@@ -33,5 +72,22 @@ std::vector<std::string> client::clientGetBuff()
 {
     return (this->buffer);
 }
+
+void client::setAuthenRequirment(int id)
+{
+    if (id == 1)
+        this->passOk = true;
+    else if (id == 2)
+        this->hasNick = true;
+    else if (id==3)
+        this->hasUser = true;
+}
+
+bool client::checkAuthenRequirment()
+{
+    if (this->hasNick == true && hasUser==true && passOk == true)
+        return true;
+    return false;
+};
 
 client::~client(){};

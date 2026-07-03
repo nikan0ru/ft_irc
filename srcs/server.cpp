@@ -201,40 +201,6 @@ int server::acceptNewClient()
     return EXIT_SUCCESS;
 }
 
-
-int server::handelNewData(int cliFd)
-{
-    char buffer[1024];
-    std::memset(buffer, 0, 1024);
-    int bytes = recv(cliFd, buffer, sizeof(buffer) -1, 0);
-    std::vector<std::string> msg;
-    client *currClient = getClient(cliFd);
-    if (bytes <= 0)
-    {
-        if (bytes == -1)
-        {
-            std::cout << "no messages are available at the socket (maybe ctrlc or ctr..)\n";
-            return EXIT_SUCCESS;
-        }
-        std::cout << "he peer has performed an orderly shutdown.\n";
-        removeClient(cliFd);
-        removeFd(cliFd);
-        close(cliFd);
-    }
-    else
-    {
-        std::cout << "msg recved\n";
-        currClient->clientSetBuff(split_recved_buffer(buffer));
-        msg = currClient->clientGetBuff();
-        for (size_t i =0; i < msg.size(); i++)
-        {
-            if (!msg[i].empty())
-                parse_and_exe(currClient, splited_cmd(msg[i]));
-        }
-    }
-    return EXIT_SUCCESS;
-}
-
 client *server::getClient(int fd)
 {
     for (size_t i = 0; i < this->clients.size(); i++)
@@ -280,11 +246,27 @@ void server::parse_and_exe(client *curClient, std::vector<std::string> splited_c
 	Command = splited_cmd[0];
     if ( (!Command.compare("USER") || !Command.compare("NICK") || !Command.compare("PASS")))
         handelAuthentication(curClient, splited_cmd);
+	if(!curClient->isAuthenticat())
+		return;
 	if(!Command.compare("JOIN"))
 		server::handleJoin(curClient, splited_cmd);
 	if(!Command.compare("TOPIC"))
 		server::handleTopic(curClient, splited_cmd);
 };
+
+bool server::isValidNickName(std::string& nickName)
+{
+    if (isdigit(nickName[0]) || nickName[0] == '&' || nickName[0] == '#' || nickName[0] == ':')
+                    return false;
+    size_t nicksize = nickName.size();
+    for (size_t i = 0; i < nicksize; i++)
+    {
+        if (!isdigit(nickName[i]) && !isalpha(nickName[i]) && nickName[i] != '[' && nickName[i] != ']' && nickName[i] != '{'
+                    && nickName[i] != '}' && nickName[i] != '\\' && nickName[i] != '|')
+                    return false;
+    }
+    return true;
+}
 
 
 void server::handelAuthentication(client* curr_client, std::vector<std::string>& cmd)
@@ -358,7 +340,7 @@ void server::handleJoin0(client *currentClient)
 			channelIt = it;
 		}
 		it++;
-		this->Channels.erase(channelIt);
+		this->Channels.erase(channelIt);// SEGV
 	}
 }
 
@@ -530,7 +512,8 @@ void server::handleTopic(client * currentClient, std::vector<std::string> & comm
 void server::manageTopic(client * curr_client, std::vector<std::string> & command)
 {
 	std::string newTopic;
-
+	(void)(command);
+	(void)(curr_client);
 
 }
 

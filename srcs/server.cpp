@@ -276,8 +276,7 @@ void server::parse_and_exe(client *curClient, std::vector<std::string> splited_c
 	std::string Command;
     std::cout << this->servpass << "\n";
 	Command = splited_cmd[0];
-    if ( (!Command.compare("USER") 
-            || !Command.compare("NICK") || !Command.compare("PASS")))
+    if ( (!Command.compare("USER") || !Command.compare("NICK") || !Command.compare("PASS")))
         handelAuthentication(curClient, splited_cmd);
 	if(!Command.compare("JOIN"))
 		server::handleJoin(curClient, splited_cmd);
@@ -307,8 +306,8 @@ void server::handelAuthentication(client* curr_client, std::vector<std::string>&
     {
         if (curr_client->isAuthenticat())
             return (std::cout << "ERR_ALREADYREGISTRED (462)\n", void());
-        if (cmdsize < 2)
-            return (std::cout << "PASS: ERR_NEEDMOREPARAMS (461)\n", void());
+        if (cmdsize != 2)
+            return (std::cout << "PASS: ERR_NEEDMOREPARAMS (461)\n", void()); // what if the pasword contiene spaces
         if (cmd[1].compare(this->servpass))
             return (std::cout << "ERR_PASSWDMISMATCH (464)\n", curr_client->setPassStatusFalse(), void());
         curr_client->setAuthenRequirment(1);
@@ -334,12 +333,10 @@ void server::handelAuthentication(client* curr_client, std::vector<std::string>&
         if (cmdsize != 5)
             return (std::cout << "USER: ERR_NEEDMOREPARAMS (461)\n", void());
         if (curr_client->isAuthenticat())
-            return (std::cout << "USER: ERR_ALREADYREGISTRED (462)\n", void());
-        curr_client->setAuthenRequirment(3);
+            return (std::cout << "USER: ERR_ALREADYREGISTRED (462)\n", void()); // user parse
         curr_client->setUserName(cmd[1]);
-        std::cout << curr_client->getUserName() << "\n";
+        curr_client->setAuthenRequirment(3);
     }
-    // need to handel if servpass is empty and sent welcome numerics 
     if (curr_client->checkAuthenRequirment() == true && curr_client->isAuthenticat() == false)
         curr_client->setAsAuthenticated();
     return;

@@ -10,6 +10,7 @@ class client
         int fd;
         std::string nickName;
 		std::string userName;
+		std::string realName;
         std::string IpAdd;
         std::vector<std::string> buffer;
 		std::set<std::string> channelsJoined;
@@ -30,6 +31,7 @@ class client
         void setPassStatusFalse();
         void setNickName(std::string nickName);
         void setUserName(std::string userName);
+        void setRealName(std::string realName);
         std::string getIpAdd();
         int getFD();
         bool isAuthenticat();

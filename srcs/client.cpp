@@ -23,6 +23,10 @@ void client::setUserName(std::string userName)
     this->userName = userName;
 }
 
+void client::setRealName(std::string realName)
+{
+    this->realName = realName;
+}
 
 int client::getFD()
 {

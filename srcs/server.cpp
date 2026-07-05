@@ -1,6 +1,14 @@
 
 #include "../includes/server.hpp"
 
+bool s_running = true;
+
+void signalHandler(int signum)
+{
+    (void)signum;
+    s_running = false;
+}
+
 server::server(const std::string& portnum, const std::string& authpass):socket_fd(-1), reuse_flag(1),
                                                                         servport(portnum),servpass(authpass), client_fd(-1)
 
@@ -131,12 +139,15 @@ int server::listen_and_monitorfdstatus()
     Newpollfd.revents = 0; //i can use it or not ??
 
     this->pollfds.push_back(Newpollfd);
-
+    signal(SIGINT, signalHandler);
+    signal(SIGQUIT, signalHandler);
     std::cout << "server: waiting for connections...\n";
-    while (1)
+    while (s_running)
     {
         if (poll(&pollfds[0], pollfds.size(), -1) == -1)
         {
+            if (errno == EINTR)
+                break;
             std::cout << "pool failed";
             return EXIT_FAILURE;
         }
@@ -263,7 +274,53 @@ void server::parse_and_exe(client *curClient, std::vector<std::string> splited_c
 		server::handleTopic(curClient, splited_cmd);
     if(!Command.compare("PRIVMSG"))
 		handlePrivmsg(curClient, splited_cmd);
+    if(!Command.compare("INVITE"))
+		handleInvite(curClient, splited_cmd);
 };
+
+void server::handleInvite(client* curr_client, std::vector<std::string>& cmd)
+{
+    int cmdsize = cmd.size();
+    std::string command = cmd[0];
+    if (!curr_client->isAuthenticat())
+        return (sendErrorMessage(curr_client, command, " :You have not registered", "451"), void());
+    if (cmdsize < 3)
+        return (sendErrorMessage(curr_client, command, " :Not enough parameters", "461"), void());
+
+    std::string targetNick =  cmd[1],targetChannel = cmd[2];
+    std::map<std::string, Channel>::iterator it;
+	it = this->Channels.find(targetChannel);
+
+	if(it == this->Channels.end())
+		return (sendErrorMessage(curr_client,command, " :No such channel", "403"), void());
+	if(!it->second.isMember(curr_client->getFD()))
+		return (sendErrorMessage(curr_client,command, " :You're not on that channel", "442"), void());
+	if(it->second.isInviteOnly())
+        if (!it->second.isOperator(curr_client->getFD()))
+            return (sendErrorMessage(curr_client,command, " :You're not channel operator", "482"), void());
+
+    client* targetClient = NULL;
+    for (size_t i = 0; i < this->clients.size(); i++)
+        if (clients[i].getNickName() == targetNick)
+            targetClient = &clients[i];
+
+    if (targetClient == NULL)
+        return (sendErrorMessage(curr_client, command, " : No such nick", "401"), void());
+
+	if(it->second.isMember(targetClient->getFD()))
+    {
+        std::string textMsg = ":ircserv 443 " + curr_client->getNickName() + " " + 
+                targetNick + " " + targetChannel + " :is already on channel\r\n";
+        return (send(curr_client->getFD(), textMsg.c_str(), textMsg.size(), 0), void());
+    }
+    it->second.addInvited(targetClient->getFD());
+    std::string textMsg = ":ircserv 341 " + curr_client->getNickName() + \
+        " " + targetNick + " " + targetChannel + "\r\n";
+    send(curr_client->getFD(), textMsg.c_str(), textMsg.size(), 0);
+    textMsg = ":" + curr_client->getNickName() + "!" + curr_client->getUserName() + "@" + curr_client->getIpAdd() 
+                + " " + command + " " +targetNick + " " + targetChannel + "\r\n";
+    send(targetClient->getFD(), textMsg.c_str(), textMsg.size(), 0);
+}
 
 void server::handlePrivmsg(client* curr_client, std::vector<std::string>& cmd)
 {
@@ -274,6 +331,53 @@ void server::handlePrivmsg(client* curr_client, std::vector<std::string>& cmd)
         return (sendErrorMessage(curr_client, "PRIVMSG", " :No recipient given (PRIVMSG)", "411"), void());
     if (cmdsize < 3)
         return (sendErrorMessage(curr_client, "PRIVMSG", " :No text to send", "412"), void());
+    
+    std::vector<std::string> targets = splitArgument(cmd[1]);
+    std::map<std::string, Channel>::iterator it;
+    size_t targetSize = targets.size();
+    std::string textMsg;
+
+    for (size_t i = 0; i < targetSize; i++)
+    {
+        std::string target = targets[i];
+        std::cout << target << "\n";
+        if (target[0] == '&' || target[0] == '#')
+        {
+            if ((it = Channels.find(target)) == Channels.end())
+            {
+                sendErrorMessage(curr_client, "PRIVMSG", " :No such channel", "403");
+                continue;
+            }
+            if (!it->second.isMember(curr_client->getFD()))
+            {
+                sendErrorMessage(curr_client, "PRIVMSG", " :Cannot send to channel", "404");
+                continue;
+            }
+
+            textMsg = ":" +curr_client->getNickName() + "!" + curr_client->getUserName() + "@"
+                + curr_client->getIpAdd() + " PRIVMSG " + it->second.getChannelName() + " :" + cmd[2] +"\r\n";
+
+            for (size_t j = 0; j < this->clients.size(); j++)
+                if(it->second.isMember(this->clients[j].getFD()) && (this->clients[j].getFD() != curr_client->getFD()))
+                    send(this->clients[j].getFD(), textMsg.c_str(), textMsg.size(), 0);
+        }
+        else
+        {
+            bool targetFound = false;
+            for (size_t j = 0; j < clients.size(); j++)
+            {
+                if((this->clients[j].getNickName() == target) && (curr_client->getFD() != clients[j].getFD())) //must send to it self her ??
+                {
+                    textMsg = ":" +curr_client->getNickName() + "!" + curr_client->getUserName() + "@"
+                       + curr_client->getIpAdd() + " PRIVMSG " + target + " :" + cmd[2] +"\r\n";
+                    send(this->clients[j].getFD(), textMsg.c_str(), textMsg.size(), 0);
+                    targetFound = true;
+                }
+            }
+            if (targetFound == false)
+                sendErrorMessage(curr_client, "PRIVMSG", " : No such nick", "401");
+        }
+    }
 }
 
 bool server::isValidNickName(std::string& nickName)
@@ -330,7 +434,7 @@ void server::handleAuthentication(client* curr_client, std::vector<std::string>&
     }
     std::string RPL_WELCOME = ":ircserv 001 "+curr_client->getNickName()\
     +" :Welcome to the Internet Relay Network " +curr_client->getNickName() \
-    + "!" + curr_client->getUserName() +"@"+ curr_client->getIpAdd();
+    + "!" + curr_client->getUserName() +"@"+ curr_client->getIpAdd() + "\r\n";
     if (curr_client->checkAuthenRequirment() == true && curr_client->isAuthenticat() == false)
         return (curr_client->setAsAuthenticated(), 	send(curr_client->getFD(), RPL_WELCOME.c_str(), RPL_WELCOME.length(), 0), void());
     return;

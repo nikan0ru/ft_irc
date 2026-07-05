@@ -41,6 +41,7 @@ class server
         void removeClient(int fd);
         void handleAuthentication(client* curr_client, std::vector<std::string>& cmd);
         void handlePrivmsg(client* curr_client, std::vector<std::string>& cmd);
+        void handleInvite(client* curr_client, std::vector<std::string>& cmd);
         bool isValidNickName(std::string& nickName);
 
   

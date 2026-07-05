@@ -47,6 +47,10 @@ const std::string &client::getNickName() const
 	return this->nickName;
 }
 
+const std::string &client::getRealName() const
+{
+	return this->realName;
+}
 
 bool client::isAuthenticat()
 {

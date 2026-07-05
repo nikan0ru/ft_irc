@@ -14,7 +14,6 @@ class client
         std::string IpAdd;
         std::vector<std::string> buffer;
 		std::set<std::string> channelsJoined;
-        std::string password;
         bool authentication;
         bool passOk;
         bool hasNick;
@@ -24,6 +23,7 @@ class client
         void clientSetBuff(std::vector<std::string> buff);
     	const std::string &getUserName() const;
     	const std::string &getNickName() const;
+    	const std::string &getRealName() const;
         std::vector<std::string> clientGetBuff();
         void setFD(int FD);
         void setIpAdd(std::string CIpAdd);

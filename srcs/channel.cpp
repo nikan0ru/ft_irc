@@ -17,6 +17,11 @@ void Channel::addMember(int clientFd)
 	this->members.insert(clientFd);
 }
 
+void Channel::addInvited(int clientFd)
+{
+	this->invited.insert(clientFd);
+}
+
 void Channel::removeMember(int clientFd)
 {
 	this->members.erase(clientFd);

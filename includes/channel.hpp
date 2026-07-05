@@ -25,6 +25,7 @@ public:
 	~Channel();
 	const std::set<int> & getMembers() const;
 	void addMember(int clientFd);
+	void addInvited(int clientFd);
 	void removeMember(int clientFd);
 	bool isMember(int clientFd);
 	bool isOperator(int clientFd);

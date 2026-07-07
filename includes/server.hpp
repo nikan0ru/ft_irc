@@ -48,6 +48,7 @@ class server
 		void manageTopic(client * curr_client, std::vector<std::string> & command);
 		void broadcastNamesList(client * currentClient,std::string &command, std::map<std::string, Channel>::iterator &it);
 		bool checkChannelModes(client *currentClient, std::string &channelName, std::string &channelKey, std::map<std::string, Channel>::iterator &it);
-
+		void handleMode(client * currentClient, std::vector<std::string> &command);
+		void handleSingleMode(char &mode, short &addOrRemove, std::map<std::string, Channel>::iterator it, std::string parameter);
 };
 void sendErrorMessage(client * currentClient, std::string command, std::string message,std::string errCode);

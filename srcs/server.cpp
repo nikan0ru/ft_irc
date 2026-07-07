@@ -244,14 +244,17 @@ void server::parse_and_exe(client *curClient, std::vector<std::string> splited_c
 	if(splited_cmd.empty())
 		return;
 	Command = splited_cmd[0];
-    if ( (!Command.compare("USER") || !Command.compare("NICK") || !Command.compare("PASS")))
+    if((!Command.compare("USER") || !Command.compare("NICK") || !Command.compare("PASS")))
         handelAuthentication(curClient, splited_cmd);
-	if(!curClient->isAuthenticat())
-		return;
-	if(!Command.compare("JOIN"))
-		server::handleJoin(curClient, splited_cmd);
-	if(!Command.compare("TOPIC"))
-		server::handleTopic(curClient, splited_cmd);
+	else if(!Command.compare("JOIN"))
+		handleJoin(curClient, splited_cmd);
+	else if(!Command.compare("TOPIC"))
+		handleTopic(curClient, splited_cmd);
+	else if(!Command.compare("MODE"))
+		handleMode(curClient, splited_cmd);
+	else
+		sendErrorMessage(curClient, Command, " :Unknown command", "421");
+
 };
 
 bool server::isValidNickName(std::string& nickName)
@@ -267,7 +270,6 @@ bool server::isValidNickName(std::string& nickName)
     }
     return true;
 }
-
 
 void server::handelAuthentication(client* curr_client, std::vector<std::string>& cmd)
 {
@@ -350,6 +352,11 @@ void server::handleJoin(client * currentClient, std::vector<std::string> & comma
 	std::vector <std::string> channels;
 	std::string temp;
 
+	if(!currentClient->isAuthenticat())
+	{
+		sendErrorMessage(currentClient,"JOIN", " :You have not registered", "451");
+		return;
+	}
 	if(command.size() < 2)
 	{
 		sendErrorMessage(currentClient,"JOIN", " :Not enough parameters", "461");
@@ -395,7 +402,7 @@ void server::handleSingleJoin(client * currentClient,std::string & channelName, 
 	}
 	else
 	{
-		if(!server::checkChannelModes(currentClient, channelName, channelKey, it))
+		if(!checkChannelModes(currentClient, channelName, channelKey, it))
 			return;
 		it->second.addMember(currentClient->getFD());
 	}
@@ -443,6 +450,150 @@ bool server::checkChannelModes(client *currentClient, std::string &channelName, 
 	return true;
 }
 
+void server::handleMode(client * currentClient, std::vector<std::string> &command)
+{
+	std::map<std::string, Channel>::iterator it;
+	std::vector<std::string> parameters;
+	std::string channelName;
+	std::string modeString;
+	short addOrRemove;
+
+	if(!currentClient->isAuthenticat())
+	{
+		sendErrorMessage(currentClient,"MODE", " :You have not registered", "451");
+		return;
+	}
+	if(command.size() < 2)
+	{
+		sendErrorMessage(currentClient,"MODE", " :Not enough parameters", "461");
+		return;
+	}
+	channelName = command[1];
+	it = this->Channels.find(channelName);
+	if(it == this->Channels.end())
+	{
+		sendErrorMessage(currentClient,channelName, " :No such channel", "403");
+		return;
+	}
+	if(command.size() == 2)
+	{
+		printChannelModes(currentClient, channelName, it);
+		return;
+	}
+	if(!it->second.isOperator(currentClient->getFD()))
+	{
+		sendErrorMessage(currentClient,channelName, " :You're not channel operator", "482");
+		return;
+	}
+	modeString = command[2];
+	for (size_t i = 0; i < modeString.length(); i++)
+	{
+		if(modeString[i] != 'i' && modeString[i] != 't' && modeString[i] != 'k' \
+		   && modeString[i] != 'o' && modeString[i] != 'l' &&  modeString[i] != '+' \
+		   &&  modeString[i] != '-')
+			{
+				sendErrorMessage(currentClient, modeString.substr(i,1), " :is unknown mode char to me", "472");
+				return;
+			}
+	}
+
+	addOrRemove = 0;
+	int j = 3;
+	for (size_t i = 0; i < command[2].length(); i++)
+	{
+		if(command[2][i] == 'i' || command[2][i] == 't')
+			parameters.push_back("");
+		else if(command[2][i] == 'k' || command[2][i] == 'l' || command[2][i] == 'o')
+			parameters.push_back(command[j++]);
+	}
+	for (size_t i = 0; i < modeString.length(); i++)
+	{
+		if(modeString[i] == '+')
+			addOrRemove = 1;
+		else if (modeString[i] == '-')
+			addOrRemove = -1;
+		else
+			handleSingleMode(modeString[i], addOrRemove, it, parameters[j++]);
+	}
+}
+
+void server::handleSingleMode(char &mode, short &addOrRemove, std::map<std::string, Channel>::iterator it, std::string parameter)
+{
+	if(mode == 'i')
+	{
+		if(addOrRemove == 1)
+			it->second.setInviteOnly(true);
+		else if(addOrRemove == -1)
+			it->second.setInviteOnly(false);
+	}
+	else if(mode == 't')
+	{
+		if(addOrRemove == 1)
+		{
+			it->second.setTopicRestriction(true);
+		}
+		else if(addOrRemove == -1)
+		{
+			it->second.setTopicRestriction(false);
+		}
+	}
+	else if(mode == 'k')
+	{
+		if(addOrRemove == 1)
+		{
+			it->second.setLocked(true);
+			it->second.setChannelKey(parameter);
+		}
+	}
+	else if(mode == 'l')
+	{
+		if(addOrRemove == 1)
+		{
+			it->second.setLimitState(true);
+			it->second.setMaxLimit(parameter);
+		}
+	}
+	else if (mode == 'o')
+	{
+		// doing it later
+	}
+}
+
+
+void printChannelModes(client * currentClient, std::string & channelName, std::map<std::string, Channel>::iterator &it)
+{
+		std::string response;
+		std::stringstream ss;
+		std::string args;
+
+		args = "";
+		response = ":ircserv 324 " + currentClient->getNickName() \
+				+ " " + channelName + " +";
+		if(it->second.isInviteOnly())
+			response += "i";
+		if(it->second.isTopicRestricted())
+			response += "t";
+		if(it->second.isLocked())
+		{
+			response += "k";
+			args += " " + it->second.getChannelKey();
+		}
+		if(it->second.isLimited())
+		{
+			response += "l";
+			ss << it->second.getMaxLimit();
+			args += " " + ss.str();
+		}
+		response += args + "\r\n";
+		send(currentClient->getFD(), response.c_str(), response.length(), 0);
+		ss.str("");
+		ss.clear();
+		ss << it->second.getCreationTime();
+		sendErrorMessage(currentClient, channelName ," " + ss.str(), "329");
+		return;
+}
+
+
 void server::broadcastNamesList(client * currentClient,std::string &channelName, std::map<std::string, Channel>::iterator &it)
 {
 	std::string reply;
@@ -477,6 +628,12 @@ void server::handleTopic(client * currentClient, std::vector<std::string> & comm
 {
 	std::string response;
 	std::map<std::string, Channel>::iterator it;
+
+	if(!currentClient->isAuthenticat())
+	{
+		sendErrorMessage(currentClient,"TOPIC", " :You have not registered", "451");
+		return;
+	}
 
 	if(command.size() < 2)
 	{

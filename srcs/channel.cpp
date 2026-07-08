@@ -1,5 +1,4 @@
 #include "../includes/channel.hpp"
-#include <iostream>
 
 Channel::Channel(std::string n) : name(n), topic(""), inviteOnly(false), topicRestricted(false),Locked(false), Limited(false), maxLimit(0)
 {
@@ -10,18 +9,30 @@ const std::set<int> & Channel::getMembers() const
 {
 	return this->members;
 }
+
 void Channel::addMember(int clientFd)
 {
-	if (this->members.size() == 0)
-		this->operators.insert(clientFd);
 	this->members.insert(clientFd);
+}
+
+void Channel::addOperator(int clientFd)
+{
+	this->operators.insert(clientFd);
 }
 
 void Channel::removeMember(int clientFd)
 {
 	this->members.erase(clientFd);
-	if(this->isOperator(clientFd))
-		this->operators.erase(clientFd);
+}
+
+void Channel::removeOperator(int clientFd)
+{
+	this->operators.erase(clientFd);
+}
+
+void Channel::removeInvite(int clientFd)
+{
+	this->invited.erase(clientFd);
 }
 
 bool Channel::isOperator(int clientFd)
@@ -121,12 +132,12 @@ void Channel::setChannelKey(std::string key)
 	this->channelKey = key;
 }
 
-void Channel::setMaxLimit(size_t limit);
+void Channel::setMaxLimit(size_t limit)
 {
 	this->maxLimit = limit;
 }
 
-void Channel::setLimitState(bool state);
+void Channel::setLimitState(bool state)
 {
 	this->Limited = state;
 }

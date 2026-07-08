@@ -29,7 +29,10 @@ class Channel
 		~Channel();
 		const std::set<int> & getMembers() const;
 		void addMember(int clientFd);
+		void addOperator(int clientFd);
 		void removeMember(int clientFd);
+		void removeInvite(int clientFd);
+		void removeOperator(int clientFd);
 		bool isMember(int clientFd);
 		bool isOperator(int clientFd);
 		bool isInvited(int clientFd) ;

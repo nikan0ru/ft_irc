@@ -244,6 +244,10 @@ void server::parse_and_exe(client *curClient, std::vector<std::string> splited_c
 	if(splited_cmd.empty())
 		return;
 	Command = splited_cmd[0];
+	for (size_t i = 0; i < Command.length; i++)
+	{
+		Command[i] = std::tolower(Command[i]);
+	}
     if((!Command.compare("USER") || !Command.compare("NICK") || !Command.compare("PASS")))
         handelAuthentication(curClient, splited_cmd);
 	else if(!Command.compare("JOIN"))
@@ -350,7 +354,12 @@ void server::handleSingleJoin(client * currentClient,std::string & channelName, 
 	std::map<std::string, Channel>::iterator it;
 	std::pair<std::map<std::string, Channel>::iterator, bool> result;
 
-	if(channelName.size() == 1 || !validateChannelName(channelName))
+	if(channelName.size() == 1 && (channelName[0] == '#' || channelName[0]== '&'))
+	{
+		sendErrorMessage(currentClient,channelName, " :No such channel", "403");
+		return;
+	}
+	if(!validateChannelName(channelName))
 	{
 		sendErrorMessage(currentClient,channelName, " :Bad Channel Mask", "476");
 		return;
@@ -423,6 +432,8 @@ void server::handleMode(client * currentClient, std::vector<std::string> &comman
 	std::string modeString;
 	short addOrRemove;
 	size_t argIndex;
+	size_t oModeCount;
+
 	if(!currentClient->isAuthenticat())
 	{
 		sendErrorMessage(currentClient,"MODE", " :You have not registered", "451");
@@ -453,6 +464,7 @@ void server::handleMode(client * currentClient, std::vector<std::string> &comman
 	modeString = command[2];
 	addOrRemove = 0;
 	argIndex = 3;
+	oModeCount = 0;
 	for (size_t i = 0; i < modeString.length(); i++)
 	{
 		if(modeString[i] == '+')
@@ -471,20 +483,36 @@ void server::handleMode(client * currentClient, std::vector<std::string> &comman
 			sendErrorMessage(currentClient, std::string(1,modeString[i]), " :is unknown mode char to me", "472");
 			continue;
 		}
-		if(addOrRemove == 0)
+		if (addOrRemove == 0)
 			continue;
-		if(((modeString[i] == 'k' ||  modeString[i] == 'l') && addOrRemove == 1 ) || modeString[i] == 'o')
+		if (((modeString[i] == 'k' || modeString[i] == 'l') && addOrRemove == 1))
 		{
-			if(argIndex >= command.size())
+
+			if (argIndex >= command.size())
 				continue;
-			handleSingleMode(currentClient,modeString[i], addOrRemove, it, command[argIndex]);
+			handleSingleMode(currentClient, modeString[i], addOrRemove, it, command[argIndex]);
 			argIndex++;
+		}
+		else if (modeString[i] == 'o')
+		{
+			if (oModeCount >= 3)
+			{
+				if (argIndex < command.size())
+				{
+					argIndex++;
+					continue;
+				}
+			}
+			if (argIndex >= command.size())
+				continue;
+			handleSingleMode(currentClient, modeString[i], addOrRemove, it, command[argIndex]);
+			argIndex++;
+			oModeCount++;
 		}
 		else
 		{
 			handleSingleMode(currentClient, modeString[i], addOrRemove, it, "");
 		}
-
 	}
 
 }
@@ -561,7 +589,6 @@ void server::handleSingleMode(client *currentClient, char mode, short addOrRemov
 	}
 	else if (mode == 'o')
 	{
-
 		for (size_t i = 0; i < this->clients.size(); i++)
 		{
 			if (this->clients[i].getNickName() == parameter)
@@ -619,21 +646,27 @@ void printChannelModes(client * currentClient, std::string & channelName, std::m
 void server::broadcastNamesList(client * currentClient,std::string &channelName, std::map<std::string, Channel>::iterator &it)
 {
 	std::string reply;
+	bool first;
 
+	first = true;
 	reply = ":ircserv 353 " + currentClient->getNickName() + " " + channelName + " :";
 	for (size_t i = 0; i < this->clients.size(); i++)
 	{
 		if(it->second.isMember(this->clients[i].getFD()))
 		{
+			if(!first)
+				reply += " ";
+
 			if(it->second.isOperator(this->clients[i].getFD()))
-				reply += "@" + this->clients[i].getNickName() + " ";
-			else
-				reply += this->clients[i].getNickName() + " ";
+				reply += "@";
+			reply += this->clients[i].getNickName();
+			first = false;
 		}
 	}
 	reply += "\r\n";
 	send(currentClient->getFD(), reply.c_str(), reply.size(), 0);
-	reply = ":ircserv 366 " + currentClient->getNickName() + " " + channelName + " :End of /NAMES list\r\n";
+	reply = ":ircserv 366 " + currentClient->getNickName() + " " + channelName \
+			+ " :End of /NAMES list\r\n";
 	send(currentClient->getFD(), reply.c_str(), reply.size(), 0);
 }
 

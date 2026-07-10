@@ -244,9 +244,9 @@ void server::parse_and_exe(client *curClient, std::vector<std::string> splited_c
 	if(splited_cmd.empty())
 		return;
 	Command = splited_cmd[0];
-	for (size_t i = 0; i < Command.length; i++)
+	for (size_t i = 0; i < Command.length(); i++)
 	{
-		Command[i] = std::tolower(Command[i]);
+		Command[i] = std::toupper(Command[i]);
 	}
     if((!Command.compare("USER") || !Command.compare("NICK") || !Command.compare("PASS")))
         handelAuthentication(curClient, splited_cmd);
@@ -430,6 +430,8 @@ void server::handleMode(client * currentClient, std::vector<std::string> &comman
 	std::map<std::string, Channel>::iterator it;
 	std::string channelName;
 	std::string modeString;
+	std::string appliedModes;
+	std::string appliedParams;
 	short addOrRemove;
 	size_t argIndex;
 	size_t oModeCount;
@@ -464,6 +466,8 @@ void server::handleMode(client * currentClient, std::vector<std::string> &comman
 	modeString = command[2];
 	addOrRemove = 0;
 	argIndex = 3;
+	appliedParams = "";
+	appliedModes = "";
 	oModeCount = 0;
 	for (size_t i = 0; i < modeString.length(); i++)
 	{
@@ -487,10 +491,13 @@ void server::handleMode(client * currentClient, std::vector<std::string> &comman
 			continue;
 		if (((modeString[i] == 'k' || modeString[i] == 'l') && addOrRemove == 1))
 		{
-
 			if (argIndex >= command.size())
 				continue;
-			handleSingleMode(currentClient, modeString[i], addOrRemove, it, command[argIndex]);
+			if(handleSingleMode(currentClient, modeString[i], addOrRemove, it, command[argIndex]))
+			{
+				appliedModes += "+" + std::string(1, modeString[i]);
+				appliedParams += " " + command[argIndex];
+			}
 			argIndex++;
 		}
 		else if (modeString[i] == 'o')
@@ -505,19 +512,46 @@ void server::handleMode(client * currentClient, std::vector<std::string> &comman
 			}
 			if (argIndex >= command.size())
 				continue;
-			handleSingleMode(currentClient, modeString[i], addOrRemove, it, command[argIndex]);
+			if(handleSingleMode(currentClient, modeString[i], addOrRemove, it, command[argIndex]))
+			{
+				if(addOrRemove == 1)
+					appliedModes += "+";
+				else if(addOrRemove == -1)
+					appliedModes += "-";
+				appliedModes +=  modeString[i];
+				appliedParams += " " + command[argIndex];
+			}
 			argIndex++;
 			oModeCount++;
 		}
 		else
 		{
-			handleSingleMode(currentClient, modeString[i], addOrRemove, it, "");
+			if(handleSingleMode(currentClient, modeString[i], addOrRemove, it, ""))
+			{
+				if(addOrRemove == 1)
+					appliedModes += "+";
+				else if(addOrRemove == -1)
+					appliedModes += "-";
+				appliedModes +=  modeString[i];
+			}
 		}
 	}
-
+	if (!appliedModes.empty())
+	{
+		appliedModes = ":" + currentClient->getNickName() + "!" + currentClient->getUserName() +\
+						"@" + currentClient->getIpAdd() + " MODE " + channelName + " " + appliedModes +\
+						 appliedParams + "\r\n";
+		for (size_t i = 0; i < this->clients.size(); i++)
+		{
+			if (it->second.isMember(this->clients[i].getFD()))
+			{
+				send(this->clients[i].getFD(), appliedModes.c_str(), appliedModes.size(), 0);
+			}
+		}
+	}
 }
 
-void server::handleSingleMode(client *currentClient, char mode, short addOrRemove, std::map<std::string, Channel>::iterator it, std::string parameter)
+bool server::handleSingleMode(client *currentClient, char mode, short addOrRemove, std::map<std::string, Channel>::iterator it, std::string parameter)
 {
 	std::stringstream ss;
 	size_t limit;
@@ -526,21 +560,25 @@ void server::handleSingleMode(client *currentClient, char mode, short addOrRemov
 	limit = 0;
 	if(mode == 'i')
 	{
-		if(addOrRemove == 1)
+		if(addOrRemove == 1 && !it->second.isInviteOnly())
+		{
 			it->second.setInviteOnly(true);
+			return true;
+		}
 		else if(addOrRemove == -1)
+		{
 			it->second.setInviteOnly(false);
+			return true;
+		}
+		return false;
 	}
 	else if(mode == 't')
 	{
 		if(addOrRemove == 1)
-		{
 			it->second.setTopicRestriction(true);
-		}
 		else if(addOrRemove == -1)
-		{
 			it->second.setTopicRestriction(false);
-		}
+		return true;
 	}
 	else if(mode == 'k')
 	{
@@ -553,8 +591,8 @@ void server::handleSingleMode(client *currentClient, char mode, short addOrRemov
 		{
 			it->second.setLocked(false);
 			it->second.setChannelKey("");
-
 		}
+		return true;
 	}
 	else if(mode == 'l')
 	{
@@ -566,7 +604,7 @@ void server::handleSingleMode(client *currentClient, char mode, short addOrRemov
 				{
 					reply += ":ircserv 696 " + currentClient->getNickName() + " " + it->first + " " + std::string (1, mode) + " " + parameter + " :invalid mode parameter\r\n";
 					send(currentClient->getFD(), reply.c_str(), reply.length(), 0);
-					return;
+					return false;
 				}
 			}
 
@@ -576,7 +614,7 @@ void server::handleSingleMode(client *currentClient, char mode, short addOrRemov
 			{
 				reply += ":ircserv 696 " + currentClient->getNickName() + " " + it->first + " " + std::string (1, mode) + " " + parameter + " :invalid mode parameter\r\n";
 					send(currentClient->getFD(), reply.c_str(), reply.length(), 0);
-				return;
+				return false;
 			}
 			it->second.setLimitState(true);
 			it->second.setMaxLimit(limit);
@@ -586,6 +624,7 @@ void server::handleSingleMode(client *currentClient, char mode, short addOrRemov
 			it->second.setLimitState(false);
 			it->second.setMaxLimit(0);
 		}
+		return true;
 	}
 	else if (mode == 'o')
 	{
@@ -596,17 +635,19 @@ void server::handleSingleMode(client *currentClient, char mode, short addOrRemov
 				if (!it->second.isMember(this->clients[i].getFD()))
 				{
 					sendErrorMessage(currentClient,parameter + " " + it->first, " :They aren't on that channel", "441");
-					return;
+					return false;
 				}
 				if (addOrRemove == 1)
 					it->second.addOperator(this->clients[i].getFD());
 				else if (addOrRemove == -1)
 					it->second.removeOperator(this->clients[i].getFD());
-				return;
+				return true;
 			}
 		}
 		sendErrorMessage(currentClient, parameter, " :No such nick", "401");
+		return false;
 	}
+	return false;
 }
 
 void printChannelModes(client * currentClient, std::string & channelName, std::map<std::string, Channel>::iterator &it)
@@ -649,7 +690,7 @@ void server::broadcastNamesList(client * currentClient,std::string &channelName,
 	bool first;
 
 	first = true;
-	reply = ":ircserv 353 " + currentClient->getNickName() + " " + channelName + " :";
+	reply = ":ircserv 353 " + currentClient->getNickName() + " = " + channelName + " :";
 	for (size_t i = 0; i < this->clients.size(); i++)
 	{
 		if(it->second.isMember(this->clients[i].getFD()))

@@ -58,5 +58,5 @@ class Channel
 bool validateChannelName(std::string name);
 std::vector<std::string> splitArgument(std::string & arguments);
 void printChannelModes(client * currentClient, std::string & command, std::map<std::string, Channel>::iterator &it);
-
+std::string toLowerCase(std::string channelName);
 #endif

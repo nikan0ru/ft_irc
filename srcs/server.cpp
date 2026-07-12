@@ -353,7 +353,7 @@ void server::handleSingleJoin(client * currentClient,std::string & channelName, 
 	std::string reply;
 	std::map<std::string, Channel>::iterator it;
 	std::pair<std::map<std::string, Channel>::iterator, bool> result;
-
+	std::string lowerCaseChannelName;
 	if(channelName.size() == 1 && (channelName[0] == '#' || channelName[0]== '&'))
 	{
 		sendErrorMessage(currentClient,channelName, " :No such channel", "403");
@@ -364,10 +364,11 @@ void server::handleSingleJoin(client * currentClient,std::string & channelName, 
 		sendErrorMessage(currentClient,channelName, " :Bad Channel Mask", "476");
 		return;
 	}
-	it = this->Channels.find(channelName);
+	lowerCaseChannelName = toLowerCase(channelName);
+	it = this->Channels.find(lowerCaseChannelName);
 	if(it == this->Channels.end())
 	{
-		result = this->Channels.insert(std::make_pair(channelName, Channel(channelName)));
+		result = this->Channels.insert(std::make_pair(lowerCaseChannelName, Channel(lowerCaseChannelName)));
 		std::cout << "Channel created successfully!!!!! deleteme"<< std::endl;
 		it = result.first;
 		it->second.addMember(currentClient->getFD());
@@ -375,7 +376,7 @@ void server::handleSingleJoin(client * currentClient,std::string & channelName, 
 	}
 	else
 	{
-		if(!checkChannelModes(currentClient, channelName, channelKey, it))
+		if(!checkChannelModes(currentClient, lowerCaseChannelName, channelKey, it))
 			return;
 		it->second.addMember(currentClient->getFD());
 		if(it->second.isInvited(currentClient->getFD()))
@@ -429,6 +430,7 @@ void server::handleMode(client * currentClient, std::vector<std::string> &comman
 {
 	std::map<std::string, Channel>::iterator it;
 	std::string channelName;
+	std::string lowerCaseChannelName;
 	std::string modeString;
 	std::string appliedModes;
 	std::string appliedParams;
@@ -447,7 +449,8 @@ void server::handleMode(client * currentClient, std::vector<std::string> &comman
 		return;
 	}
 	channelName = command[1];
-	it = this->Channels.find(channelName);
+	lowerCaseChannelName = toLowerCase(channelName);
+	it = this->Channels.find(lowerCaseChannelName);
 	if(it == this->Channels.end())
 	{
 		sendErrorMessage(currentClient,channelName, " :No such channel", "403");
@@ -493,7 +496,7 @@ void server::handleMode(client * currentClient, std::vector<std::string> &comman
 		{
 			if (argIndex >= command.size())
 				continue;
-			if(handleSingleMode(currentClient, modeString[i], addOrRemove, it, command[argIndex]))
+			if(handleSingleMode(currentClient, modeString[i], addOrRemove, it, command[argIndex], channelName))
 			{
 				appliedModes += "+" + std::string(1, modeString[i]);
 				appliedParams += " " + command[argIndex];
@@ -512,7 +515,7 @@ void server::handleMode(client * currentClient, std::vector<std::string> &comman
 			}
 			if (argIndex >= command.size())
 				continue;
-			if(handleSingleMode(currentClient, modeString[i], addOrRemove, it, command[argIndex]))
+			if(handleSingleMode(currentClient, modeString[i], addOrRemove, it, command[argIndex], channelName))
 			{
 				if(addOrRemove == 1)
 					appliedModes += "+";
@@ -526,7 +529,7 @@ void server::handleMode(client * currentClient, std::vector<std::string> &comman
 		}
 		else
 		{
-			if(handleSingleMode(currentClient, modeString[i], addOrRemove, it, ""))
+			if(handleSingleMode(currentClient, modeString[i], addOrRemove, it, "", channelName))
 			{
 				if(addOrRemove == 1)
 					appliedModes += "+";
@@ -551,7 +554,7 @@ void server::handleMode(client * currentClient, std::vector<std::string> &comman
 	}
 }
 
-bool server::handleSingleMode(client *currentClient, char mode, short addOrRemove, std::map<std::string, Channel>::iterator it, std::string parameter)
+bool server::handleSingleMode(client *currentClient, char mode, short addOrRemove, std::map<std::string, Channel>::iterator it, std::string parameter, std::string channelName)
 {
 	std::stringstream ss;
 	size_t limit;
@@ -602,7 +605,7 @@ bool server::handleSingleMode(client *currentClient, char mode, short addOrRemov
 			{
 				if(!std::isdigit(parameter[i]))
 				{
-					reply += ":ircserv 696 " + currentClient->getNickName() + " " + it->first + " " + std::string (1, mode) + " " + parameter + " :invalid mode parameter\r\n";
+					reply += ":ircserv 696 " + currentClient->getNickName() + " " + channelName + " " + std::string (1, mode) + " " + parameter + " :invalid mode parameter\r\n";
 					send(currentClient->getFD(), reply.c_str(), reply.length(), 0);
 					return false;
 				}
@@ -612,7 +615,7 @@ bool server::handleSingleMode(client *currentClient, char mode, short addOrRemov
 			ss >> limit;
 			if(limit == 0)
 			{
-				reply += ":ircserv 696 " + currentClient->getNickName() + " " + it->first + " " + std::string (1, mode) + " " + parameter + " :invalid mode parameter\r\n";
+				reply += ":ircserv 696 " + currentClient->getNickName() + " " + channelName + " " + std::string (1, mode) + " " + parameter + " :invalid mode parameter\r\n";
 					send(currentClient->getFD(), reply.c_str(), reply.length(), 0);
 				return false;
 			}
@@ -634,7 +637,7 @@ bool server::handleSingleMode(client *currentClient, char mode, short addOrRemov
 			{
 				if (!it->second.isMember(this->clients[i].getFD()))
 				{
-					sendErrorMessage(currentClient,parameter + " " + it->first, " :They aren't on that channel", "441");
+					sendErrorMessage(currentClient,parameter + " " + channelName, " :They aren't on that channel", "441");
 					return false;
 				}
 				if (addOrRemove == 1)

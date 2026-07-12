@@ -45,6 +45,16 @@ bool Channel::isOperator(int clientFd)
 	return false;
 }
 
+std::string toLowerCase(std::string channelName)
+{
+	for(size_t i = 0; i < channelName.length(); i++)
+	{
+		if(!std::islower(channelName[i]))
+			channelName[i] = std::tolower(channelName[i]);
+	}
+	return channelName;
+}
+
 bool Channel::isMember(int clientFd)
 {
 	std::set<int>::iterator it;

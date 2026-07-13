@@ -413,10 +413,6 @@ void server::handleAuthentication(client* curr_client, std::vector<std::string>&
 
 	Command = cmd[0];
     int cmdsize = cmd.size();
-	for (size_t i = 0; i < Command.length(); i++)
-	{
-		Command[i] = std::toupper(Command[i]);
-	}
     if (!Command.compare("pass"))
     {
         if (curr_client->isAuthenticat())
@@ -509,7 +505,7 @@ void server::handleSingleJoin(client * currentClient,std::string & channelName, 
 	it = this->Channels.find(lowerCaseChannelName);
 	if(it == this->Channels.end())
 	{
-		result = this->Channels.insert(std::make_pair(lowerCaseChannelName, Channel(lowerCaseChannelName)));
+		result = this->Channels.insert(std::make_pair(lowerCaseChannelName, Channel(channelName)));
 		std::cout << "Channel created successfully!!!!! deleteme"<< std::endl;
 		it = result.first;
 		it->second.addMember(currentClient->getFD());
@@ -517,15 +513,15 @@ void server::handleSingleJoin(client * currentClient,std::string & channelName, 
 	}
 	else
 	{
-		if(!checkChannelModes(currentClient, lowerCaseChannelName, channelKey, it))
+		if(!checkChannelModes(currentClient, channelName, channelKey, it))
 			return;
 		it->second.addMember(currentClient->getFD());
 		if(it->second.isInvited(currentClient->getFD()))
 			it->second.removeInvite(currentClient->getFD());
 	}
 	reply = ":" +currentClient->getNickName() + "!" + currentClient->getUserName() + "@"
-	+ currentClient->getIpAdd() + " JOIN " + channelName +"\r\n";
-	for (unsigned long i = 0; i < this->clients.size(); i++)
+	+ currentClient->getIpAdd() + " JOIN " + it->second.getChannelName() +"\r\n";
+	for (size_t i = 0; i < this->clients.size(); i++)
 	{
 		if(it->second.isMember(this->clients[i].getFD()))
 		{
@@ -536,7 +532,7 @@ void server::handleSingleJoin(client * currentClient,std::string & channelName, 
 	if(!it->second.getTopic().empty())
 	{
 		reply = ":ircserv 332 " + currentClient->getNickName() + " "
-				+ channelName + " :" + it->second.getTopic() + "\r\n";
+				+ it->second.getChannelName() + " :" + it->second.getTopic() + "\r\n";
 		send(currentClient->getFD(), reply.c_str(), reply.size(), 0);
 	}
 	server::broadcastNamesList(currentClient,channelName,  it);
@@ -683,7 +679,7 @@ void server::handleMode(client * currentClient, std::vector<std::string> &comman
 	if (!appliedModes.empty())
 	{
 		appliedModes = ":" + currentClient->getNickName() + "!" + currentClient->getUserName() +\
-						"@" + currentClient->getIpAdd() + " MODE " + channelName + " " + appliedModes +\
+						"@" + currentClient->getIpAdd() + " MODE " + it->second.getChannelName() + " " + appliedModes +\
 						 appliedParams + "\r\n";
 		for (size_t i = 0; i < this->clients.size(); i++)
 		{
@@ -828,13 +824,13 @@ void printChannelModes(client * currentClient, std::string & channelName, std::m
 }
 
 
-void server::broadcastNamesList(client * currentClient,std::string &channelName, std::map<std::string, Channel>::iterator &it)
+void server::broadcastNamesList(client * currentClient, std::map<std::string, Channel>::iterator &it)
 {
 	std::string reply;
 	bool first;
 
 	first = true;
-	reply = ":ircserv 353 " + currentClient->getNickName() + " = " + channelName + " :";
+	reply = ":ircserv 353 " + currentClient->getNickName() + " = " + it->second.getChannelName() + " :";
 	for (size_t i = 0; i < this->clients.size(); i++)
 	{
 		if(it->second.isMember(this->clients[i].getFD()))
@@ -850,7 +846,7 @@ void server::broadcastNamesList(client * currentClient,std::string &channelName,
 	}
 	reply += "\r\n";
 	send(currentClient->getFD(), reply.c_str(), reply.size(), 0);
-	reply = ":ircserv 366 " + currentClient->getNickName() + " " + channelName \
+	reply = ":ircserv 366 " + currentClient->getNickName() + " " + it->second.getChannelName() \
 			+ " :End of /NAMES list\r\n";
 	send(currentClient->getFD(), reply.c_str(), reply.size(), 0);
 }
@@ -869,6 +865,7 @@ void server::handleTopic(client * currentClient, std::vector<std::string> & comm
 {
 	std::string response;
 	std::map<std::string, Channel>::iterator it;
+	std::string channelName;
 
 	if(!currentClient->isAuthenticat())
 	{
@@ -881,7 +878,7 @@ void server::handleTopic(client * currentClient, std::vector<std::string> & comm
 		sendErrorMessage(currentClient,command[0], " :Not enough parameters", "461");
 		return;
 	}
-	response = currentClient->getUserName() + " " + command[1];
+	channelName = toLowerCase(command[1]);
 	it = this->Channels.find(command[1]);
 	if(it == this->Channels.end())
 	{

@@ -23,6 +23,10 @@ void client::setUserName(std::string userName)
     this->userName = userName;
 }
 
+void client::setRealName(std::string realName)
+{
+    this->realName = realName;
+}
 
 int client::getFD()
 {
@@ -43,6 +47,10 @@ const std::string &client::getNickName() const
 	return this->nickName;
 }
 
+const std::string &client::getRealName() const
+{
+	return this->realName;
+}
 
 bool client::isAuthenticat()
 {

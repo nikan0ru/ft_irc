@@ -39,7 +39,9 @@ class server
         void closeAllFds();
         void removeFd(int fd);
         void removeClient(int fd);
-        void handelAuthentication(client* curr_client, std::vector<std::string>& cmd);
+        void handleAuthentication(client* curr_client, std::vector<std::string>& cmd);
+        void handlePrivmsg(client* curr_client, std::vector<std::string>& cmd);
+        void handleInvite(client* curr_client, std::vector<std::string>& cmd);
         bool isValidNickName(std::string& nickName);
 	  	void handleJoin(client * curr_client, std::vector<std::string> & command);
 	  	void handleSingleJoin(client * curr_client, std::string & channelName, std::string &channelKey);
@@ -49,5 +51,6 @@ class server
 		bool checkChannelModes(client *currentClient, std::string &channelName, std::string &channelKey, std::map<std::string, Channel>::iterator &it);
 		void handleMode(client * currentClient, std::vector<std::string> &command);
 		bool handleSingleMode(client *currentClient,char mode, short addOrRemove, std::map<std::string, Channel>::iterator it, std::string parameter, std::string channelName);
+
 };
 void sendErrorMessage(client * currentClient, std::string command, std::string message,std::string errCode);

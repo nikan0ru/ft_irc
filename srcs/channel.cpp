@@ -15,6 +15,11 @@ void Channel::addMember(int clientFd)
 	this->members.insert(clientFd);
 }
 
+
+void Channel::addInvited(int clientFd)
+{
+	this->invited.insert(clientFd);
+}
 void Channel::addOperator(int clientFd)
 {
 	this->operators.insert(clientFd);

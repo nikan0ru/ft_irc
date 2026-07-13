@@ -1,27 +1,38 @@
 #include "../includes/channel.hpp"
-#include <iostream>
 
-Channel::Channel(std::string n) : name(n), topic(""), InviteOnly(false), TopicRestricted(false),Locked(false), Limited(false), MaxLimit(0)
+Channel::Channel(std::string n) : name(n), topic(""), inviteOnly(false), topicRestricted(false),Locked(false), Limited(false), maxLimit(0)
 {
-
+	this->creationTime = time(NULL);
 }
 
 const std::set<int> & Channel::getMembers() const
 {
 	return this->members;
 }
+
 void Channel::addMember(int clientFd)
 {
-	if (this->members.size() == 0)
-		this->operators.insert(clientFd);
 	this->members.insert(clientFd);
+}
+
+void Channel::addOperator(int clientFd)
+{
+	this->operators.insert(clientFd);
 }
 
 void Channel::removeMember(int clientFd)
 {
 	this->members.erase(clientFd);
-	if(this->isOperator(clientFd))
-		this->operators.erase(clientFd);
+}
+
+void Channel::removeOperator(int clientFd)
+{
+	this->operators.erase(clientFd);
+}
+
+void Channel::removeInvite(int clientFd)
+{
+	this->invited.erase(clientFd);
 }
 
 bool Channel::isOperator(int clientFd)
@@ -32,6 +43,16 @@ bool Channel::isOperator(int clientFd)
 	if(it != this->operators.end())
 		return true;
 	return false;
+}
+
+std::string toLowerCase(std::string channelName)
+{
+	for(size_t i = 0; i < channelName.length(); i++)
+	{
+		if(!std::islower(channelName[i]))
+			channelName[i] = std::tolower(channelName[i]);
+	}
+	return channelName;
 }
 
 bool Channel::isMember(int clientFd)
@@ -56,7 +77,7 @@ bool Channel::isInvited(int clientFd)
 
 size_t Channel::getMaxLimit() const
 {
-	return this->MaxLimit;
+	return this->maxLimit;
 }
 
 
@@ -74,17 +95,22 @@ const std::string &Channel::getChannelKey() const
 	return this->channelKey;
 }
 
+const time_t &Channel::getCreationTime() const
+{
+	return this->creationTime;
+}
+
 bool Channel::isLocked() const
 {
 	return this->Locked;
 }
 bool Channel::isInviteOnly() const
 {
-	return this->InviteOnly;
+	return this->inviteOnly;
 }
 bool Channel::isTopicRestricted() const
 {
-	return this->TopicRestricted;
+	return this->topicRestricted;
 }
 bool Channel::isLimited() const
 {
@@ -94,6 +120,36 @@ bool Channel::isLimited() const
 void Channel::setTopic(std::string newTopic)
 {
 	this->topic = newTopic;
+}
+
+void Channel::setTopicRestriction(bool state)
+{
+	this->topicRestricted = state;
+}
+
+void Channel::setLocked(bool state)
+{
+	this->Locked = state;
+}
+
+void Channel::setInviteOnly(bool state)
+{
+	this->inviteOnly = state;
+}
+
+void Channel::setChannelKey(std::string key)
+{
+	this->channelKey = key;
+}
+
+void Channel::setMaxLimit(size_t limit)
+{
+	this->maxLimit = limit;
+}
+
+void Channel::setLimitState(bool state)
+{
+	this->Limited = state;
 }
 
 void Channel::clearTopic()
@@ -140,3 +196,4 @@ std::vector<std::string> splitArgument(std::string & arguments)
 	}
 	return splitArgs;
 }
+

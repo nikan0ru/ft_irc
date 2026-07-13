@@ -12,6 +12,9 @@
 #include <arpa/inet.h>
 #include "client.hpp"
 #include "channel.hpp"
+#include <cstdlib>
+#include <errno.h>
+#include <signal.h>
 
 class server
 {
@@ -46,7 +49,7 @@ class server
 	  	void handleJoin(client * curr_client, std::vector<std::string> & command);
 	  	void handleSingleJoin(client * curr_client, std::string & channelName, std::string &channelKey);
 		void handleTopic(client * curr_client, std::vector<std::string> & command);
-		void manageTopic(client * curr_client, std::vector<std::string> & command);
+		void manageTopic(client * curr_client, std::vector<std::string> & command, std::map<std::string, Channel>::iterator & it);
 		void broadcastNamesList(client * currentClient, std::map<std::string, Channel>::iterator &it);
 		bool checkChannelModes(client *currentClient, std::string &channelName, std::string &channelKey, std::map<std::string, Channel>::iterator &it);
 		void handleMode(client * currentClient, std::vector<std::string> &command);

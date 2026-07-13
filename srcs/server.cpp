@@ -319,7 +319,7 @@ void server::handleInvite(client* curr_client, std::vector<std::string>& cmd)
             targetClient = &clients[i];
 
     if (targetClient == NULL)
-        return (sendErrorMessage(curr_client, "INVITE", " : No such nick", "401"), void());
+		return (sendErrorMessage(curr_client, "INVITE", " : No such nick", "401"), void());
 
 	if(it->second.isMember(targetClient->getFD()))
     {
@@ -528,6 +528,11 @@ void server::handleSingleJoin(client * currentClient,std::string & channelName, 
 			send(this->clients[i].getFD(), reply.c_str(), reply.size(), 0);
 		}
 	}
+	if(it->second.getMembers().size() == 1)
+	{
+		reply = ":ircserv MODE " + it->second.getChannelName() + " +o " + currentClient->getNickName() + "\r\n";
+		send(currentClient->getFD(), reply.c_str(), reply.length(), 0);
+	}
 
 	if(!it->second.getTopic().empty())
 	{
@@ -535,7 +540,7 @@ void server::handleSingleJoin(client * currentClient,std::string & channelName, 
 				+ it->second.getChannelName() + " :" + it->second.getTopic() + "\r\n";
 		send(currentClient->getFD(), reply.c_str(), reply.size(), 0);
 	}
-	server::broadcastNamesList(currentClient,channelName,  it);
+	server::broadcastNamesList(currentClient,  it);
 }
 
 bool server::checkChannelModes(client *currentClient, std::string &channelName, std::string &channelKey, std::map<std::string, Channel>::iterator &it)
@@ -856,7 +861,7 @@ void sendErrorMessage(client * currentClient, std::string command, std::string m
 	std::string response;
     std::string target = currentClient->getNickName();
     if (target.empty())
-        target = "*";
+		target = "*";
 	response = ":ircserv " + errCode + " " + target + " " + command + message + "\r\n";
 	send(currentClient->getFD(), response.c_str(), response.length(), 0);
 }
@@ -866,7 +871,8 @@ void server::handleTopic(client * currentClient, std::vector<std::string> & comm
 	std::string response;
 	std::map<std::string, Channel>::iterator it;
 	std::string channelName;
-
+	std::string modificationTime;
+	std::stringstream ss;
 	if(!currentClient->isAuthenticat())
 	{
 		sendErrorMessage(currentClient,"TOPIC", " :You have not registered", "451");
@@ -879,39 +885,70 @@ void server::handleTopic(client * currentClient, std::vector<std::string> & comm
 		return;
 	}
 	channelName = toLowerCase(command[1]);
-	it = this->Channels.find(command[1]);
+	it = this->Channels.find(channelName);
 	if(it == this->Channels.end())
 	{
-		sendErrorMessage(currentClient,command[0], " :No such channel", "403");
+		sendErrorMessage(currentClient,channelName, " :No such channel", "403");
 		return;
 	}
 	if(!it->second.isMember(currentClient->getFD()))
 	{
-		sendErrorMessage(currentClient,command[0], " :You're not on that channel", "442");
+		sendErrorMessage(currentClient,channelName, " :You're not on that channel", "442");
 		return;
 	}
 	if(command.size() > 2)
 	{
-		server::manageTopic(currentClient, command);
+		server::manageTopic(currentClient, command, it);
 		return;
 	}
 	if(it->second.getTopic().empty())
 	{
-		sendErrorMessage(currentClient,command[0], " :No topic is set", "331");
+		sendErrorMessage(currentClient, channelName, " :No topic is set", "331");
 		return;
 	}
-	response = currentClient->getNickName() + "?? " + command[1] + it->second.getTopic() + "\r\n";
+	response = ":ircserv 332 " + currentClient->getNickName() + " " + it->second.getChannelName() + " :" + it->second.getTopic() + "\r\n";
+	send(currentClient->getFD(), response.c_str(), response.length(), 0);
+	ss << it->second.getTopicModificationDate();
+	response =":ircserv 333 " + currentClient->getNickName() + " " + it->second.getChannelName() + " " + it->second.getTopicSetter() + " "
+	+ ss.str() +"\r\n";
 	send(currentClient->getFD(), response.c_str(), response.length(), 0);
 }
 
-void server::manageTopic(client * curr_client, std::vector<std::string> & command)
+void server::manageTopic(client * currentClient, std::vector<std::string> & command, std::map<std::string, Channel>::iterator & it)
 {
-	std::string newTopic;
-	(void)(command);
-	(void)(curr_client);
+	std::string channelName;
+	std::string topicMessage;
+	std::string reply;
+	channelName = command[1];
+	topicMessage = command[2];
 
+	if(it->second.isTopicRestricted() && !it->second.isOperator(currentClient->getFD()))
+	{
+		sendErrorMessage(currentClient, channelName, " :You're not channel operator", "482");
+		return;
+
+	}
+	it->second.setTopic(topicMessage);
+	if(!topicMessage.empty())
+	{
+		it->second.setTopicSetter(currentClient->getNickName());
+		it->second.setTopicModificationDate(time(NULL));
+	}
+	else
+	{
+		it->second.setTopicSetter("");
+		it->second.setTopicModificationDate(0);
+	}
+	reply = ":" + currentClient->getNickName() + "!" + currentClient->getUserName() + "@" + currentClient->getIpAdd()
+		+ " TOPIC " + it->second.getChannelName() + " :" + topicMessage + "\r\n";
+	for (size_t i = 0; i < this->clients.size(); i++)
+	{
+		if (it->second.isMember(this->clients[i].getFD()))
+		{
+			send(this->clients[i].getFD(), reply.c_str(), reply.length(), 0);
+		}
+	}
 }
-
 
 int server::handelNewData(int cliFd)
 {

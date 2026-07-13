@@ -13,7 +13,9 @@ class Channel
 	private:
 		std::string name;
 		std::string topic;
+		std::string TopicSetter;
 		time_t creationTime;
+		time_t topicModificationTime;
 		std::string channelKey;
 		bool inviteOnly;
 		bool topicRestricted;
@@ -45,9 +47,13 @@ class Channel
 		const std::string &getChannelKey() const;
 		const std::string &getChannelName() const;
 		const std::string &getTopic() const;
-		const time_t &getCreationTime() const;
+		const std::string getTopicSetter() const;
+		time_t getCreationTime() const;
+		time_t getTopicModificationDate() const;
 		void setTopic(std::string topic);
 		void setTopicRestriction(bool state);
+		void setTopicSetter(std::string nickName);
+		void setTopicModificationDate(time_t time);
 		void setChannelKey(std::string key);
 		void setLimitState(bool state);
 		void setMaxLimit(size_t limit);

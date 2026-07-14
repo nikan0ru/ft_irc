@@ -22,7 +22,7 @@ class client
         client();
         void clientSetBuff(std::vector<std::string> buff);
     	const std::string &getUserName() const;
-    	const std::string &getNickName() const;
+        const std::string &getNickName() const;
     	const std::string &getRealName() const;
         std::vector<std::string> clientGetBuff();
         void setFD(int FD);

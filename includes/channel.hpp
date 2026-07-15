@@ -36,7 +36,8 @@ class Channel
 		void removeOperator(int clientFd);
 		bool isMember(int clientFd);
 		bool isOperator(int clientFd);
-		bool isInvited(int clientFd) ;
+		bool isInvited(int clientFd);
+		void addInvited(int clientFd);
 		bool isLocked() const;
 		bool isInviteOnly() const;
 		bool isTopicRestricted() const;

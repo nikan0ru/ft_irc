@@ -32,6 +32,7 @@ class Channel
 		const std::set<int> & getMembers() const;
 		void addMember(int clientFd);
 		void addOperator(int clientFd);
+		void addInvited(int clientFd);
 		void removeMember(int clientFd);
 		void removeInvite(int clientFd);
 		void removeOperator(int clientFd);

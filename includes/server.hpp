@@ -11,6 +11,9 @@
 #include <arpa/inet.h>
 #include "client.hpp"
 #include "channel.hpp"
+#include <cstdlib>
+#include <errno.h>
+#include <signal.h>
 
 class server
 {

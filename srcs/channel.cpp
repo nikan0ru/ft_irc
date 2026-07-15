@@ -85,6 +85,15 @@ size_t Channel::getMaxLimit() const
 	return this->maxLimit;
 }
 
+const std::string  Channel::getTopicSetter() const
+{
+	return this->TopicSetter;
+}
+
+time_t Channel::getTopicModificationDate() const
+{
+	return this->topicModificationTime;
+}
 
 const std::string& Channel::getChannelName() const
 {
@@ -100,7 +109,7 @@ const std::string &Channel::getChannelKey() const
 	return this->channelKey;
 }
 
-const time_t &Channel::getCreationTime() const
+time_t Channel::getCreationTime() const
 {
 	return this->creationTime;
 }
@@ -155,6 +164,16 @@ void Channel::setMaxLimit(size_t limit)
 void Channel::setLimitState(bool state)
 {
 	this->Limited = state;
+}
+
+void Channel::setTopicSetter(std::string nickName)
+{
+	this->TopicSetter = nickName;
+}
+
+void Channel::setTopicModificationDate(time_t time)
+{
+	this->topicModificationTime = time;
 }
 
 void Channel::clearTopic()

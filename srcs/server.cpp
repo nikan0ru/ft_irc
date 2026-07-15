@@ -316,41 +316,8 @@ void server::handlekick(client* curr_client, std::vector<std::string>& cmd)
     std::<std::string> targetNick =  splitArgument(cmd[2]),targetChannel = splitArgument(cmd[1]);
 	std::string kickReason = (cmdsize >= 4) ? cmd[3] : cmd[2];
     std::map<std::string, Channel>::iterator it;
-	for (size_t i = 0;i < targetChannel[i] < targetChannel.size(); i++)
-	{
-		it = this->Channels.find(normalize(targetChannel[i]));
-		if(it == this->Channels.end())
-			return (sendErrorMessage(curr_client,command, " :No such channel", "403"), void());
-		if(!it->second.isMember(curr_client->getFD()))
-			return (sendErrorMessage(curr_client,command, " :You're not on that channel", "442"), void());
-		if(it->second.isInviteOnly())
-			if (!it->second.isOperator(curr_client->getFD()))
-				return (sendErrorMessage(curr_client,command, " :You're not channel operator", "482"), void());
+	
 
-		for (size_t j = 0; j < this->clients.size(); j++)
-		{
-			client* targetClient = NULL;
-			if (normalize(clients[j].getNickName()) == normalize(targetNick[j]))
-				targetClient = &clients[j];
-
-			if (targetClient == NULL)
-				return (sendErrorMessage(curr_client, command, " : No such nick", "401"), void());
-
-			if(it->second.isMember(targetClient->getFD()))
-			{
-				std::string textMsg = ":ircserv 443 " + curr_client->getNickName() + " " + 
-						targetNick + " " + targetChannel + " :is already on channel\r\n";
-				return (send(curr_client->getFD(), textMsg.c_str(), textMsg.size(), 0), void());
-			}
-		}
-	}
-    it->second.addInvited(targetClient->getFD());
-    std::string textMsg = ":ircserv 341 " + curr_client->getNickName() + \
-        " " + targetNick + " " + targetChannel + "\r\n";
-    send(curr_client->getFD(), textMsg.c_str(), textMsg.size(), 0);
-    textMsg = ":" + curr_client->getNickName() + "!" + curr_client->getUserName() + "@" + curr_client->getIpAdd() 
-                + " " + command + " " +targetNick + " " + targetChannel + "\r\n";
-    send(targetClient->getFD(), textMsg.c_str(), textMsg.size(), 0);
 }
 
 void server::handleInvite(client* curr_client, std::vector<std::string>& cmd)

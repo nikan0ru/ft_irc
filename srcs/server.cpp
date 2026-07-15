@@ -289,7 +289,7 @@ void server::parse_and_exe(client *curClient, std::vector<std::string> splited_c
 	std::string Command;
 	if(splited_cmd.empty())
 		return;
-	splited_cmd[0] = toLowerCase(splited_cmd[0]);
+	splited_cmd[0] = normalize(splited_cmd[0]);
 	Command = splited_cmd[0];
     if((!Command.compare("user") || !Command.compare("nick") || !Command.compare("pass")))
         handleAuthentication(curClient, splited_cmd);
@@ -303,25 +303,100 @@ void server::parse_and_exe(client *curClient, std::vector<std::string> splited_c
 		handlePrivmsg(curClient, splited_cmd);
   else if(!Command.compare("invite"))
 		handleInvite(curClient, splited_cmd);
-	else if(!Command.compare("KICK"))
-		handlekick(curClient, splited_cmd);
+	else if(!Command.compare("kick"))
+		handleKick(curClient, splited_cmd);
 	else
 		sendErrorMessage(curClient, Command, " :Unknown command", "421");
 
 };
 
-void server::handlekick(client* curr_client, std::vector<std::string>& cmd)
+void server::handleKick(client* currentClient, std::vector<std::string>& cmd)
 {
-    int cmdsize = cmd.size();
-    std::string command = cmd[0];
-    if (!curr_client->isAuthenticat())
-        return (sendErrorMessage(curr_client, command, " :You have not registered", "451"), void());
-    if (cmdsize < 3)
-        return (sendErrorMessage(curr_client, command, " :Not enough parameters", "461"), void());
-
-    std::vector<std::string> targetNick =  splitArgument(cmd[2]),targetChannel = splitArgument(cmd[1]);
-	std::string kickReason = (cmdsize >= 4) ? cmd[3] : cmd[2];
+	std::vector<std::string> nickList;
+	std::vector<std::string> channelList;
+	std::string kickReason;
+	std::string message;
     std::map<std::string, Channel>::iterator it;
+
+    if (!currentClient->isAuthenticat())
+	{
+		sendErrorMessage(currentClient, "KICK", " :You have not registered", "451");
+		return;
+	}
+    if (cmd.size() < 3)
+	{
+		sendErrorMessage(currentClient, "KICK", " :Not enough parameters", "461");
+        return;
+	}
+	channelList = splitArgument(cmd[1]);
+    nickList = splitArgument(cmd[2]);
+	while (nickList.size() < channelList.size())
+	{
+		nickList.push_back("");
+	}
+	for (size_t i = 0; i < channelList.size(); i++)
+	{
+		it = this->Channels.find(normalize(channelList[i]));
+		if(it != this->Channels.end())
+		{
+			if(it->second.isMember(currentClient->getFD()))
+			{
+				if(it->second.isOperator(currentClient->getFD()))
+				{
+					for (size_t i = 0; i < this->clients.size(); i++)
+					{
+						if(nickList[i] == "")
+							break;
+						if (this->clients[i].getNickName() == nickList[i])
+						{
+							if (it->second.isMember(this->clients[i].getFD()))
+							{
+								for (size_t i = 0; i < this->clients.size(); i++)
+								{
+									if(it->second.isMember(this->clients[i].getFD()))
+									{
+										if(cmd.size() > 3)
+											kickReason = cmd[3];
+										else
+											kickReason = nickList[i];
+										message = currentClient->getNickName() + "!" +currentClient->getUserName() + "@" + currentClient->getIpAdd()
+										+ " KICK " + channelList[i]+ " " + nickList[i] + " :" + kickReason + "\r\n" ;
+										send(this->clients[i].getFD(), message.c_str(), message.length(), 0);
+									}
+								}
+
+								it->second.removeMember(this->clients[i].getFD());
+								if (it->second.isOperator(this->clients[i].getFD()))
+									it->second.removeOperator(this->clients[i].getFD());
+							}
+							else
+							{
+								sendErrorMessage(currentClient, nickList[i] + " " + channelList[i], " :They aren't on that channel", "441");
+								return;
+							}
+						}
+					}
+				}
+				else
+				{
+					sendErrorMessage(currentClient, channelList[i], " :You're not channel operator", "482");
+					return;
+				}
+			}
+			else
+			{
+				sendErrorMessage(currentClient, channelList[i], " :You're not on that channel", "442");
+				return;
+			}
+		}
+		else
+		{
+			sendErrorMessage(currentClient, channelList[i], " :No such channel", "403");
+			return;
+		}
+
+	}
+
 
 
 }
@@ -537,7 +612,7 @@ void server::handleSingleJoin(client * currentClient,std::string & channelName, 
 		sendErrorMessage(currentClient,channelName, " :Bad Channel Mask", "476");
 		return;
 	}
-	lowerCaseChannelName = toLowerCase(channelName);
+	lowerCaseChannelName = normalize(channelName);
 	it = this->Channels.find(lowerCaseChannelName);
 	if(it == this->Channels.end())
 	{
@@ -564,11 +639,11 @@ void server::handleSingleJoin(client * currentClient,std::string & channelName, 
 			send(this->clients[i].getFD(), reply.c_str(), reply.size(), 0);
 		}
 	}
-	if(it->second.getMembers().size() == 1)
-	{
-		reply = ":ircserv MODE " + it->second.getChannelName() + " +o " + currentClient->getNickName() + "\r\n";
-		send(currentClient->getFD(), reply.c_str(), reply.length(), 0);
-	}
+	// if(it->second.getMembers().size() == 1)
+	// {
+	// 	reply = ":ircserv MODE " + it->second.getChannelName() + " +o " + currentClient->getNickName() + "\r\n";
+	// 	send(currentClient->getFD(), reply.c_str(), reply.length(), 0);
+	// }
 
 	if(!it->second.getTopic().empty())
 	{
@@ -627,7 +702,7 @@ void server::handleMode(client * currentClient, std::vector<std::string> &comman
 		return;
 	}
 	channelName = command[1];
-	lowerCaseChannelName = toLowerCase(channelName);
+	lowerCaseChannelName = normalize(channelName);
 	it = this->Channels.find(lowerCaseChannelName);
 	if(it == this->Channels.end())
 	{
@@ -920,7 +995,7 @@ void server::handleTopic(client * currentClient, std::vector<std::string> & comm
 		sendErrorMessage(currentClient,command[0], " :Not enough parameters", "461");
 		return;
 	}
-	channelName = toLowerCase(command[1]);
+	channelName = normalize(command[1]);
 	it = this->Channels.find(channelName);
 	if(it == this->Channels.end())
 	{
@@ -954,6 +1029,7 @@ void server::manageTopic(client * currentClient, std::vector<std::string> & comm
 {
 	std::string channelName;
 	std::string topicMessage;
+	std::string topicSetter;
 	std::string reply;
 	channelName = command[1];
 	topicMessage = command[2];
@@ -967,7 +1043,9 @@ void server::manageTopic(client * currentClient, std::vector<std::string> & comm
 	it->second.setTopic(topicMessage);
 	if(!topicMessage.empty())
 	{
-		it->second.setTopicSetter(currentClient->getNickName());
+		topicSetter = currentClient->getNickName() + "!" + currentClient->getUserName() + "@"
+		+ currentClient->getIpAdd() ;
+		it->second.setTopicSetter(topicSetter);
 		it->second.setTopicModificationDate(time(NULL));
 	}
 	else

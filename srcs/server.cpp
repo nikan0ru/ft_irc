@@ -304,7 +304,7 @@ void server::parse_and_exe(client *curClient, std::vector<std::string> splited_c
   else if(!Command.compare("invite"))
 		handleInvite(curClient, splited_cmd);
 	else if(!Command.compare("KICK"))
-		handleKick(curClient, splited_cmd);
+		handlekick(curClient, splited_cmd);
 	else
 		sendErrorMessage(curClient, Command, " :Unknown command", "421");
 
@@ -319,10 +319,10 @@ void server::handlekick(client* curr_client, std::vector<std::string>& cmd)
     if (cmdsize < 3)
         return (sendErrorMessage(curr_client, command, " :Not enough parameters", "461"), void());
 
-    std::<std::string> targetNick =  splitArgument(cmd[2]),targetChannel = splitArgument(cmd[1]);
+    std::vector<std::string> targetNick =  splitArgument(cmd[2]),targetChannel = splitArgument(cmd[1]);
 	std::string kickReason = (cmdsize >= 4) ? cmd[3] : cmd[2];
     std::map<std::string, Channel>::iterator it;
-	
+
 
 }
 
@@ -336,16 +336,16 @@ void server::handleInvite(client* curr_client, std::vector<std::string>& cmd)
 
     std::string targetNick =  cmd[1],targetChannel = cmd[2];
     std::map<std::string, Channel>::iterator it;
-	it = this->Channels.find(normaize(targetChannel));
+	it = this->Channels.find(normalize(targetChannel));
 	if(it == this->Channels.end())
 	{
 		// RFC 1459 section 4.2.7 states: "There is no requirement that the channel the target user is being invited to must exist or be a valid channel."
 		// 	return (sendErrorMessage(curr_client,command, " :No such channel", "403"), void());
 		if(!it->second.isMember(curr_client->getFD()))
-			return (sendErrorMessage(curr_client,command, " :You're not on that channel", "442"), void());
+			return (sendErrorMessage(curr_client,cmd[0], " :You're not on that channel", "442"), void());
 		if(it->second.isInviteOnly())
         	if (!it->second.isOperator(curr_client->getFD()))
-            	return (sendErrorMessage(curr_client,command, " :You're not channel operator", "482"), void());
+            	return (sendErrorMessage(curr_client,cmd[0], " :You're not channel operator", "482"), void());
 	}
 
     client* targetClient = NULL;

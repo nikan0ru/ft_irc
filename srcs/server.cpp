@@ -304,26 +304,89 @@ void server::parse_and_exe(client *curClient, std::vector<std::string> splited_c
   else if(!Command.compare("invite"))
 		handleInvite(curClient, splited_cmd);
 	else if(!Command.compare("KICK"))
-		handlekick(curClient, splited_cmd);
+		handleKick(curClient, splited_cmd);
 	else
 		sendErrorMessage(curClient, Command, " :Unknown command", "421");
 
 };
 
-void server::handlekick(client* curr_client, std::vector<std::string>& cmd)
+void server::handleKick(client* currentClient, std::vector<std::string>& cmd)
 {
-    int cmdsize = cmd.size();
-    std::string command = cmd[0];
-    if (!curr_client->isAuthenticat())
-        return (sendErrorMessage(curr_client, command, " :You have not registered", "451"), void());
-    if (cmdsize < 3)
-        return (sendErrorMessage(curr_client, command, " :Not enough parameters", "461"), void());
-
-    std::vector<std::string> targetNick =  splitArgument(cmd[2]),targetChannel = splitArgument(cmd[1]);
-	std::string kickReason = (cmdsize >= 4) ? cmd[3] : cmd[2];
+	std::vector<std::string> nickList;
+	std::vector<std::string> channelList;
+	std::string kickReason;
+	std::string message;
     std::map<std::string, Channel>::iterator it;
+	size_t channelListsize = 0;
 
+    if (!currentClient->isAuthenticat())
+	{
+		sendErrorMessage(currentClient, "KICK", " :You have not registered", "451");
+		return;
+	}
+    if (cmd.size() < 3)
+	{
+		sendErrorMessage(currentClient, "KICK", " :Not enough parameters", "461");
+        return;
+	}
+	channelList = splitArgument(cmd[1]);
+    nickList = splitArgument(cmd[2]);
 
+	if (nickList.size() < channelListsize)
+		channelListsize = nickList.size();
+	else
+		channelListsize = channelList.size();
+
+	for (size_t i = 0; i < channelListsize; i++)
+	{
+		it = this->Channels.find(normalize(channelList[i]));
+		if(it == this->Channels.end())
+		{
+			sendErrorMessage(currentClient, channelList[i], " :No such channel", "403");
+			continue;
+		}
+		if (!it->second.isMember(currentClient->getFD()))
+		{
+			sendErrorMessage(currentClient, channelList[i], " :You're not on that channel", "442");
+			continue;
+		}
+		if (!it->second.isOperator(currentClient->getFD()))
+		{
+			sendErrorMessage(currentClient, channelList[i], " :You're not channel operator", "482");
+			continue;
+		}
+		for (size_t j = 0; j < this->clients.size(); j++)
+		{
+			if (normalize(this->clients[j].getNickName()) == normalize(nickList[i]))
+			{
+				if (!it->second.isMember(this->clients[j].getFD()))
+				{
+					sendErrorMessage(currentClient, nickList[i] + " " + channelList[i], " :They aren't on that channel", "441");
+					break;
+				}
+				for (size_t k = 0; k < this->clients.size(); k++)
+				{
+					if (it->second.isMember(this->clients[k].getFD()))
+					{
+						if (cmd.size() > 3)
+							kickReason = cmd[3];
+						else
+							kickReason = nickList[i];
+						message = ":" + currentClient->getNickName() + "!" + currentClient->getUserName() + "@" + currentClient->getIpAdd()
+								+ " KICK " + channelList[i] + " " + nickList[i] + " :" + kickReason + "\r\n";
+						send(this->clients[k].getFD(), message.c_str(), message.length(), 0);
+					}
+				}
+
+				if (it->second.isOperator(this->clients[j].getFD()))
+					it->second.removeOperator(this->clients[j].getFD());
+				it->second.removeMember(this->clients[j].getFD());
+				if(it->second.getMembers().size() == 0)
+					this->Channels.erase(it);
+				break;
+			}
+		}
+	}
 }
 
 void server::handleInvite(client* curr_client, std::vector<std::string>& cmd)

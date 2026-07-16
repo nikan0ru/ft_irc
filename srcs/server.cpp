@@ -317,6 +317,7 @@ void server::handleKick(client* currentClient, std::vector<std::string>& cmd)
 	std::string kickReason;
 	std::string message;
     std::map<std::string, Channel>::iterator it;
+	size_t channelListsize;
 
     if (!currentClient->isAuthenticat())
 	{
@@ -330,75 +331,62 @@ void server::handleKick(client* currentClient, std::vector<std::string>& cmd)
 	}
 	channelList = splitArgument(cmd[1]);
     nickList = splitArgument(cmd[2]);
-	while (nickList.size() < channelList.size())
-	{
-		nickList.push_back("");
-	}
-	for (size_t i = 0; i < channelList.size(); i++)
+
+	if (nickList.size() < channelListsize)
+		channelListsize = nickList.size();
+	else
+		channelListsize = channelList.size();
+
+	for (size_t i = 0; i < channelListsize; i++)
 	{
 		it = this->Channels.find(normalize(channelList[i]));
-		if(it != this->Channels.end())
-		{
-			if(it->second.isMember(currentClient->getFD()))
-			{
-				if(it->second.isOperator(currentClient->getFD()))
-				{
-					for (size_t i = 0; i < this->clients.size(); i++)
-					{
-						if(nickList[i] == "")
-							break;
-						if (this->clients[i].getNickName() == nickList[i])
-						{
-							if (it->second.isMember(this->clients[i].getFD()))
-							{
-								for (size_t i = 0; i < this->clients.size(); i++)
-								{
-									if(it->second.isMember(this->clients[i].getFD()))
-									{
-										if(cmd.size() > 3)
-											kickReason = cmd[3];
-										else
-											kickReason = nickList[i];
-										message = currentClient->getNickName() + "!" +currentClient->getUserName() + "@" + currentClient->getIpAdd()
-										+ " KICK " + channelList[i]+ " " + nickList[i] + " :" + kickReason + "\r\n" ;
-										send(this->clients[i].getFD(), message.c_str(), message.length(), 0);
-									}
-								}
-
-								it->second.removeMember(this->clients[i].getFD());
-								if (it->second.isOperator(this->clients[i].getFD()))
-									it->second.removeOperator(this->clients[i].getFD());
-							}
-							else
-							{
-								sendErrorMessage(currentClient, nickList[i] + " " + channelList[i], " :They aren't on that channel", "441");
-								return;
-							}
-						}
-					}
-				}
-				else
-				{
-					sendErrorMessage(currentClient, channelList[i], " :You're not channel operator", "482");
-					return;
-				}
-			}
-			else
-			{
-				sendErrorMessage(currentClient, channelList[i], " :You're not on that channel", "442");
-				return;
-			}
-		}
-		else
+		if(it == this->Channels.end())
 		{
 			sendErrorMessage(currentClient, channelList[i], " :No such channel", "403");
-			return;
+			continue;
 		}
+		if (!it->second.isMember(currentClient->getFD()))
+		{
+			sendErrorMessage(currentClient, channelList[i], " :You're not on that channel", "442");
+			continue;
+		}
+		if (!it->second.isOperator(currentClient->getFD()))
+		{
+			sendErrorMessage(currentClient, channelList[i], " :You're not channel operator", "482");
+			continue;
+		}
+		for (size_t j = 0; j < this->clients.size(); j++)
+		{
+			if (normalize(this->clients[j].getNickName()) == normalize(nickList[i]))
+			{
+				if (!it->second.isMember(this->clients[j].getFD()))
+				{
+					sendErrorMessage(currentClient, nickList[i] + " " + channelList[i], " :They aren't on that channel", "441");
+					break;
+				}
+				for (size_t k = 0; k < this->clients.size(); k++)
+				{
+					if (it->second.isMember(this->clients[k].getFD()))
+					{
+						if (cmd.size() > 3)
+							kickReason = cmd[3];
+						else
+							kickReason = nickList[i];
+						message = ":" + currentClient->getNickName() + "!" + currentClient->getUserName() + "@" + currentClient->getIpAdd()
+								+ " KICK " + channelList[i] + " " + nickList[i] + " :" + kickReason + "\r\n";
+						send(this->clients[k].getFD(), message.c_str(), message.length(), 0);
+					}
+				}
 
+				if (it->second.isOperator(this->clients[j].getFD()))
+					it->second.removeOperator(this->clients[j].getFD());
+				it->second.removeMember(this->clients[j].getFD());
+				if(it->second.getMembers().size() == 0)
+					this->Channels.erase(it);
+				break;
+			}
+		}
 	}
-
-
-
 }
 
 void server::handleInvite(client* curr_client, std::vector<std::string>& cmd)

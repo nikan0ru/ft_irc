@@ -357,37 +357,31 @@ void server::handleKick(client* currentClient, std::vector<std::string>& cmd)
 		}
 		for (size_t j = 0; j < this->clients.size(); j++)
 		{
-			if (normalize(this->clients[j].getNickName()) == normalize(nickList[i]))
+			if (normalize(this->clients[j].getNickName()) != normalize(nickList[i]))
 			{
-				if (!it->second.isMember(this->clients[j].getFD()))
-				{
-					sendErrorMessage(currentClient, nickList[i] + " " + channelList[i], " :They aren't on that channel", "441");
-					break;
-				}
-				for (size_t k = 0; k < this->clients.size(); k++)
-				{
-					if (it->second.isMember(this->clients[k].getFD()))
-					{
-						if (cmd.size() > 3)
-							kickReason = cmd[3];
-						else
-							kickReason = nickList[i];
-						message = ":" + currentClient->getNickName() + "!" + currentClient->getUserName() + "@" + currentClient->getIpAdd()
-								+ " KICK " + channelList[i] + " " + nickList[i] + " :" + kickReason + "\r\n";
-						send(this->clients[k].getFD(), message.c_str(), message.length(), 0);
-					}
-				}
-
-				if (it->second.isOperator(this->clients[j].getFD()))
-					it->second.removeOperator(this->clients[j].getFD());
-				it->second.removeMember(this->clients[j].getFD());
-				if(it->second.getMembers().size() == 0)
-					this->Channels.erase(it);
-				break;
+				sendErrorMessage(currentClient, cmd[0], " : No such nick", "401");
+				continue;
 			}
+			if (!it->second.isMember(this->clients[j].getFD()))
+			{
+				sendErrorMessage(currentClient, nickList[i] + " " + channelList[i], " :They aren't on that channel", "441");
+				continue;
+			}
+	
+			message = ":" + currentClient->getNickName() + "!" + currentClient->getUserName() + "@" + currentClient->getIpAdd()
+					+ " KICK " + channelList[i] + " " + nickList[i] + " :" + kickReason + "\r\n";
+			send(this->clients[j].getFD(), message.c_str(), message.length(), 0);// u need to prodcast the msg for kick
+
+			if (it->second.isOperator(this->clients[j].getFD()))
+				it->second.removeOperator(this->clients[j].getFD());
+			it->second.removeMember(this->clients[j].getFD());
+			if(it->second.getMembers().size() == 0)
+				this->Channels.erase(it);
+			continue;
 		}
 	}
 }
+
 
 void server::handleInvite(client* curr_client, std::vector<std::string>& cmd)
 {

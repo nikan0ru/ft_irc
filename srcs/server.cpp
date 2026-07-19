@@ -299,11 +299,11 @@ void server::parse_and_exe(client *curClient, std::vector<std::string> splited_c
 		handleTopic(curClient, splited_cmd);
 	else if(!Command.compare("mode"))
 		handleMode(curClient, splited_cmd);
-  else if(!Command.compare("privmsg"))
+  else if(!Command.compare("privmsg")) 
 		handlePrivmsg(curClient, splited_cmd);
   else if(!Command.compare("invite"))
 		handleInvite(curClient, splited_cmd);
-	else if(!Command.compare("KICK"))
+	else if(!Command.compare("kick"))
 		handleKick(curClient, splited_cmd);
 	else
 		sendErrorMessage(curClient, Command, " :Unknown command", "421");
@@ -409,8 +409,17 @@ void server::handleInvite(client* curr_client, std::vector<std::string>& cmd)
 
     std::string targetNick =  cmd[1],targetChannel = cmd[2];
     std::map<std::string, Channel>::iterator it;
+	client* targetClient = NULL;
+
 	it = this->Channels.find(normalize(targetChannel));
-	if(it == this->Channels.end())
+    for (size_t i = 0; i < this->clients.size(); i++)
+        if (normalize(clients[i].getNickName()) == normalize(targetNick))
+            targetClient = &clients[i];
+
+	if (targetClient == NULL)
+		return (sendErrorMessage(curr_client, "INVITE", " : No such nick", "401"), void());
+
+	if(it != this->Channels.end())
 	{
 		// RFC 1459 section 4.2.7 states: "There is no requirement that the channel the target user is being invited to must exist or be a valid channel."
 		// 	return (sendErrorMessage(curr_client,command, " :No such channel", "403"), void());
@@ -419,23 +428,15 @@ void server::handleInvite(client* curr_client, std::vector<std::string>& cmd)
 		if(it->second.isInviteOnly())
         	if (!it->second.isOperator(curr_client->getFD()))
             	return (sendErrorMessage(curr_client,cmd[0], " :You're not channel operator", "482"), void());
+		if(it->second.isMember(targetClient->getFD()))
+		{
+			std::string textMsg = ":ircserv 443 " + curr_client->getNickName() + " " +
+					targetNick + " " + targetChannel + " :is already on channel\r\n";
+			return (send(curr_client->getFD(), textMsg.c_str(), textMsg.size(), 0), void());
+		}
+		it->second.addInvited(targetClient->getFD());
 	}
 
-    client* targetClient = NULL;
-    for (size_t i = 0; i < this->clients.size(); i++)
-        if (normalize(clients[i].getNickName()) == normalize(targetNick))
-            targetClient = &clients[i];
-
-    if (targetClient == NULL)
-		return (sendErrorMessage(curr_client, "INVITE", " : No such nick", "401"), void());
-
-	if(it->second.isMember(targetClient->getFD()))
-    {
-        std::string textMsg = ":ircserv 443 " + curr_client->getNickName() + " " +
-                targetNick + " " + targetChannel + " :is already on channel\r\n";
-        return (send(curr_client->getFD(), textMsg.c_str(), textMsg.size(), 0), void());
-    }
-    it->second.addInvited(targetClient->getFD());
     std::string textMsg = ":ircserv 341 " + curr_client->getNickName() + \
         " " + targetNick + " " + targetChannel + "\r\n";
     send(curr_client->getFD(), textMsg.c_str(), textMsg.size(), 0);

@@ -375,7 +375,7 @@ void server::handleKick(client* currentClient, std::vector<std::string>& cmd)
 						message = ":" + currentClient->getNickName() + "!" + currentClient->getUserName() + "@" + currentClient->getIpAdd()
 								+ " KICK " + channelList[i] + " " + nickList[i] + " :" + kickReason + "\r\n";
 						send(this->clients[k].getFD(), message.c_str(), message.length(), 0);
-					}
+					} // check my optimization
 				}
 
 				if (it->second.isOperator(this->clients[j].getFD()))
@@ -620,18 +620,15 @@ void server::handleSingleJoin(client * currentClient,std::string & channelName, 
 	}
 	reply = ":" +currentClient->getNickName() + "!" + currentClient->getUserName() + "@"
 	+ currentClient->getIpAdd() + " JOIN " + it->second.getChannelName() +"\r\n";
-	for (size_t i = 0; i < this->clients.size(); i++)
+	for (std::set<int>::iterator sit = it->second.getMembers().begin(); sit != it->second.getMembers().end(); sit++)
 	{
-		if(it->second.isMember(this->clients[i].getFD()))
-		{
-			send(this->clients[i].getFD(), reply.c_str(), reply.size(), 0);
-		}
+		send(*sit, reply.c_str(), reply.size(), 0);
 	}
 	// if(it->second.getMembers().size() == 1)
 	// {
 	// 	reply = ":ircserv MODE " + it->second.getChannelName() + " +o " + currentClient->getNickName() + "\r\n";
 	// 	send(currentClient->getFD(), reply.c_str(), reply.length(), 0);
-	// }
+	// }  should i do this
 
 	if(!it->second.getTopic().empty())
 	{
@@ -785,13 +782,11 @@ void server::handleMode(client * currentClient, std::vector<std::string> &comman
 		appliedModes = ":" + currentClient->getNickName() + "!" + currentClient->getUserName() +\
 						"@" + currentClient->getIpAdd() + " MODE " + it->second.getChannelName() + " " + appliedModes +\
 						 appliedParams + "\r\n";
-		for (size_t i = 0; i < this->clients.size(); i++)
+		for (std::set<int>::iterator sit = it->second.getMembers().begin(); sit != it->second.getMembers().end(); sit++)
 		{
-			if (it->second.isMember(this->clients[i].getFD()))
-			{
-				send(this->clients[i].getFD(), appliedModes.c_str(), appliedModes.size(), 0);
-			}
+			send(*sit, appliedModes.c_str(), appliedModes.size(), 0);
 		}
+
 	}
 }
 
@@ -963,7 +958,6 @@ void sendErrorMessage(client * currentClient, std::string command, std::string m
 		target = "*";
 	response = ":ircserv " + errCode + " " + target + " " + command + message + "\r\n";
 	send(currentClient->getFD(), response.c_str(), response.length(), 0);
-
 }
 
 void server::handleTopic(client * currentClient, std::vector<std::string> & command)
@@ -973,6 +967,7 @@ void server::handleTopic(client * currentClient, std::vector<std::string> & comm
 	std::string channelName;
 	std::string modificationTime;
 	std::stringstream ss;
+
 	if(!currentClient->isAuthenticat())
 	{
 		sendErrorMessage(currentClient,"TOPIC", " :You have not registered", "451");
@@ -1020,15 +1015,14 @@ void server::manageTopic(client * currentClient, std::vector<std::string> & comm
 	std::string topicMessage;
 	std::string topicSetter;
 	std::string reply;
-	channelName = command[1];
-	topicMessage = command[2];
 
 	if(it->second.isTopicRestricted() && !it->second.isOperator(currentClient->getFD()))
 	{
 		sendErrorMessage(currentClient, channelName, " :You're not channel operator", "482");
 		return;
-
 	}
+	channelName = command[1];
+	topicMessage = command[2];
 	it->second.setTopic(topicMessage);
 	if(!topicMessage.empty())
 	{
@@ -1044,13 +1038,11 @@ void server::manageTopic(client * currentClient, std::vector<std::string> & comm
 	}
 	reply = ":" + currentClient->getNickName() + "!" + currentClient->getUserName() + "@" + currentClient->getIpAdd()
 		+ " TOPIC " + it->second.getChannelName() + " :" + topicMessage + "\r\n";
-	for (size_t i = 0; i < this->clients.size(); i++)
+	for (std::set<int>::iterator sit = it->second.getMembers().begin(); sit !=  it->second.getMembers().end(); sit++)
 	{
-		if (it->second.isMember(this->clients[i].getFD()))
-		{
-			send(this->clients[i].getFD(), reply.c_str(), reply.length(), 0);
-		}
+		send(*sit, reply.c_str(), reply.length(), 0);
 	}
+
 }
 
 int server::handelNewData(int cliFd)

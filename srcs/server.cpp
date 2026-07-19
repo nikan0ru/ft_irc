@@ -314,6 +314,7 @@ void server::handleKick(client* currentClient, std::vector<std::string>& cmd)
 {
 	std::vector<std::string> nickList;
 	std::vector<std::string> channelList;
+	client* targetClient;
 	std::string kickReason;
 	std::string message;
     std::map<std::string, Channel>::iterator it;
@@ -329,13 +330,17 @@ void server::handleKick(client* currentClient, std::vector<std::string>& cmd)
 		sendErrorMessage(currentClient, "KICK", " :Not enough parameters", "461");
         return;
 	}
+	else if (cmd.size() >= 4)
+		kickReason = cmd[3];
+	else
+		kickReason = currentClient->getNickName();
+
 	channelList = splitArgument(cmd[1]);
     nickList = splitArgument(cmd[2]);
+	channelListsize = channelList.size();
 
 	if (nickList.size() < channelListsize)
 		channelListsize = nickList.size();
-	else
-		channelListsize = channelList.size();
 
 	for (size_t i = 0; i < channelListsize; i++)
 	{
@@ -355,29 +360,40 @@ void server::handleKick(client* currentClient, std::vector<std::string>& cmd)
 			sendErrorMessage(currentClient, channelList[i], " :You're not channel operator", "482");
 			continue;
 		}
-		for (size_t j = 0; j < this->clients.size(); j++)
+
+		for (size_t j = 0; j < nickList.size(); j++)
 		{
-			if (normalize(this->clients[j].getNickName()) != normalize(nickList[i]))
+			targetClient = NULL;
+			for (size_t k = 0; k < clients.size(); k++){
+				if (normalize(clients[k].getNickName()) == normalize(nickList[j])){
+					targetClient = &clients[k];
+					break;
+				}
+			}
+
+			if (targetClient == NULL)
 			{
 				sendErrorMessage(currentClient, cmd[0], " : No such nick", "401");
 				continue;
 			}
-			if (!it->second.isMember(this->clients[j].getFD()))
+
+			if (!it->second.isMember(targetClient->getFD()))
 			{
-				sendErrorMessage(currentClient, nickList[i] + " " + channelList[i], " :They aren't on that channel", "441");
+				sendErrorMessage(currentClient, nickList[j] + " " + channelList[i], " :They aren't on that channel", "441");
 				continue;
 			}
-	
+
 			message = ":" + currentClient->getNickName() + "!" + currentClient->getUserName() + "@" + currentClient->getIpAdd()
-					+ " KICK " + channelList[i] + " " + nickList[i] + " :" + kickReason + "\r\n";
+					+ " KICK " + channelList[i] + " " + nickList[j] + " :" + kickReason + "\r\n";
 			send(this->clients[j].getFD(), message.c_str(), message.length(), 0);// u need to prodcast the msg for kick
 
-			if (it->second.isOperator(this->clients[j].getFD()))
-				it->second.removeOperator(this->clients[j].getFD());
-			it->second.removeMember(this->clients[j].getFD());
-			if(it->second.getMembers().size() == 0)
+			if (it->second.isOperator(targetClient->getFD()))
+				it->second.removeOperator(targetClient->getFD());
+			it->second.removeMember(targetClient->getFD());
+			if(it->second.getMembers().size() == 0){
 				this->Channels.erase(it);
-			continue;
+				break;				
+			}
 		}
 	}
 }

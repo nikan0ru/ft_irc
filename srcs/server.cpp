@@ -165,6 +165,7 @@ int server::listen_and_monitorfdstatus()
     this->pollfds.push_back(Newpollfd);
     signal(SIGINT, signalHandler);
     signal(SIGQUIT, signalHandler);
+    signal(SIGPIPE, SIG_IGN);
     std::cout << "server: waiting for connections...\n";
     while (g_running)
     {
@@ -332,10 +333,9 @@ void server::handleKick(client* currentClient, std::vector<std::string>& cmd)
 	channelList = splitArgument(cmd[1]);
     nickList = splitArgument(cmd[2]);
 
+	channelListsize = channelList.size();
 	if (nickList.size() < channelListsize)
 		channelListsize = nickList.size();
-	else
-		channelListsize = channelList.size();
 
 	for (size_t i = 0; i < channelListsize; i++)
 	{
@@ -963,6 +963,7 @@ void sendErrorMessage(client * currentClient, std::string command, std::string m
 		target = "*";
 	response = ":ircserv " + errCode + " " + target + " " + command + message + "\r\n";
 	send(currentClient->getFD(), response.c_str(), response.length(), 0);
+
 }
 
 void server::handleTopic(client * currentClient, std::vector<std::string> & command)

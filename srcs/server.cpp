@@ -310,15 +310,15 @@ void server::parse_and_exe(client *curClient, std::vector<std::string> splited_c
 
 };
 
+
 void server::handleKick(client* currentClient, std::vector<std::string>& cmd)
 {
 	std::vector<std::string> nickList;
 	std::vector<std::string> channelList;
-	client* targetClient;
 	std::string kickReason;
 	std::string message;
     std::map<std::string, Channel>::iterator it;
-	size_t channelListsize = 0;
+	size_t channelListsize;
 
     if (!currentClient->isAuthenticat())
 	{
@@ -330,15 +330,10 @@ void server::handleKick(client* currentClient, std::vector<std::string>& cmd)
 		sendErrorMessage(currentClient, "KICK", " :Not enough parameters", "461");
         return;
 	}
-	else if (cmd.size() >= 4)
-		kickReason = cmd[3];
-	else
-		kickReason = currentClient->getNickName();
-
 	channelList = splitArgument(cmd[1]);
     nickList = splitArgument(cmd[2]);
-	channelListsize = channelList.size();
 
+	channelListsize = channelList.size();
 	if (nickList.size() < channelListsize)
 		channelListsize = nickList.size();
 
@@ -360,39 +355,37 @@ void server::handleKick(client* currentClient, std::vector<std::string>& cmd)
 			sendErrorMessage(currentClient, channelList[i], " :You're not channel operator", "482");
 			continue;
 		}
-
-		for (size_t j = 0; j < nickList.size(); j++)
+		for (size_t j = 0; j < this->clients.size(); j++)
 		{
-			targetClient = NULL;
-			for (size_t k = 0; k < clients.size(); k++){
-				if (normalize(clients[k].getNickName()) == normalize(nickList[j])){
-					targetClient = &clients[k];
+			if (normalize(this->clients[j].getNickName()) == normalize(nickList[i]))
+			{
+				if (!it->second.isMember(this->clients[j].getFD()))
+				{
+					sendErrorMessage(currentClient, nickList[i] + " " + channelList[i], " :They aren't on that channel", "441");
 					break;
 				}
-			}
 
-			if (targetClient == NULL)
-			{
-				sendErrorMessage(currentClient, cmd[0], " : No such nick", "401");
-				continue;
-			}
+				kickReason = nickList[i];
+				if (cmd.size() > 3)
+					kickReason = cmd[3];
+				
+				message = ":" + currentClient->getNickName() + "!" + currentClient->getUserName() + "@" + currentClient->getIpAdd()
+					+ " KICK " + channelList[i] + " " + nickList[i] + " :" + kickReason + "\r\n";
+				for (size_t k = 0; k < this->clients.size(); k++)
+				{
+					if (it->second.isMember(this->clients[k].getFD()))
+					{
 
-			if (!it->second.isMember(targetClient->getFD()))
-			{
-				sendErrorMessage(currentClient, nickList[j] + " " + channelList[i], " :They aren't on that channel", "441");
-				continue;
-			}
+						send(this->clients[k].getFD(), message.c_str(), message.length(), 0);
+					}
+				}
 
-			message = ":" + currentClient->getNickName() + "!" + currentClient->getUserName() + "@" + currentClient->getIpAdd()
-					+ " KICK " + channelList[i] + " " + nickList[j] + " :" + kickReason + "\r\n";
-			send(this->clients[j].getFD(), message.c_str(), message.length(), 0);// u need to prodcast the msg for kick
-
-			if (it->second.isOperator(targetClient->getFD()))
-				it->second.removeOperator(targetClient->getFD());
-			it->second.removeMember(targetClient->getFD());
-			if(it->second.getMembers().size() == 0){
-				this->Channels.erase(it);
-				break;				
+				if (it->second.isOperator(this->clients[j].getFD()))
+					it->second.removeOperator(this->clients[j].getFD());
+				it->second.removeMember(this->clients[j].getFD());
+				if(it->second.getMembers().size() == 0)
+					this->Channels.erase(it);
+				break;
 			}
 		}
 	}
@@ -421,8 +414,6 @@ void server::handleInvite(client* curr_client, std::vector<std::string>& cmd)
 
 	if(it != this->Channels.end())
 	{
-		// RFC 1459 section 4.2.7 states: "There is no requirement that the channel the target user is being invited to must exist or be a valid channel."
-		// 	return (sendErrorMessage(curr_client,command, " :No such channel", "403"), void());
 		if(!it->second.isMember(curr_client->getFD()))
 			return (sendErrorMessage(curr_client,cmd[0], " :You're not on that channel", "442"), void());
 		if(it->second.isInviteOnly())

@@ -453,6 +453,7 @@ void server::handlePrivmsg(client* curr_client, std::vector<std::string>& cmd)
         return (sendErrorMessage(curr_client, "PRIVMSG", " :No recipient given (PRIVMSG)", "411"), void());
     if (cmdsize < 3)
         return (sendErrorMessage(curr_client, "PRIVMSG", " :No text to send", "412"), void());
+
     std::vector<std::string> targets = splitArgument(cmd[1]);
     std::map<std::string, Channel>::iterator it;
     size_t targetSize = targets.size();

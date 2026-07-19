@@ -392,6 +392,7 @@ void server::handleKick(client* currentClient, std::vector<std::string>& cmd)
 }
 
 
+
 void server::handleInvite(client* curr_client, std::vector<std::string>& cmd)
 {
     int cmdsize = cmd.size();

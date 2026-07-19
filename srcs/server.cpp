@@ -526,7 +526,7 @@ void server::handleAuthentication(client* curr_client, std::vector<std::string>&
             return (sendErrorMessage(curr_client, "PASS", " :Password incorrect", "464"), curr_client->setPassStatusFalse(), void());
         curr_client->setAuthenRequirment(1);
     }
-    else if (!Command.compare("nick"))
+    else if (!Command.compare("nick") && curr_client->checkAuthenRequirment(1) == true)
     {
         if (cmdsize < 2 || cmd[1].empty())
             return (sendErrorMessage(curr_client, "NICK", " :No nickname given", "431"), void());
@@ -540,9 +540,9 @@ void server::handleAuthentication(client* curr_client, std::vector<std::string>&
         curr_client->setNickName(cmd[1]);
         curr_client->setAuthenRequirment(2);
     }
-    else
+    else if (curr_client->checkAuthenRequirment(2) == true)
     {
-        if (curr_client->isAuthenticat())
+        if (curr_client->isAuthenticat() )
             return (sendErrorMessage(curr_client, "USER", " :You may not reregister", "462"), void());
         if (cmdsize < 5 || cmd[1].empty())
             return (sendErrorMessage(curr_client, "USER", " :Not enough parameters", "461"), void());
@@ -550,10 +550,14 @@ void server::handleAuthentication(client* curr_client, std::vector<std::string>&
         curr_client->setRealName(cmd[4]);
         curr_client->setAuthenRequirment(3);
     }
+	else{
+		std::string response = "\nThe recommended order for a client to register is as follows:\nPass message\nNick message\nUser message\n\n";
+		send(curr_client->getFD(), response.c_str(), response.length(), 0);
+	}
     std::string RPL_WELCOME = ":ircserv 001 "+curr_client->getNickName()\
     +" :Welcome to the Internet Relay Network " +curr_client->getNickName() \
     + "!" + curr_client->getUserName() +"@"+ curr_client->getIpAdd() + "\r\n";
-    if (curr_client->checkAuthenRequirment() == true && curr_client->isAuthenticat() == false)
+    if (curr_client->checkAuthenRequirment(3) == true && curr_client->isAuthenticat() == false)
         return (curr_client->setAsAuthenticated(), 	send(curr_client->getFD(), RPL_WELCOME.c_str(), RPL_WELCOME.length(), 0), void());
     return;
 }

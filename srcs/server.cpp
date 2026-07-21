@@ -307,7 +307,7 @@ void server::parse_and_exe(client *curClient, std::vector<std::string> splited_c
 		handleTopic(curClient, splited_cmd);
 	else if(!Command.compare("mode"))
 		handleMode(curClient, splited_cmd);
-  else if(!Command.compare("privmsg"))
+  else if(!Command.compare("privmsg")) 
 		handlePrivmsg(curClient, splited_cmd);
   else if(!Command.compare("invite"))
 		handleInvite(curClient, splited_cmd);
@@ -368,20 +368,23 @@ void server::handleKick(client* currentClient, std::vector<std::string>& cmd)
 			{
 				if (!it->second.isMember(this->clients[j].getFD()))
 				{
-					sendErrorMessage(currentClient, nickList[i] + " " + it->second.getChannelName(), " :They aren't on that channel", "441");
+					sendErrorMessage(currentClient, nickList[i] + " " + channelList[i], " :They aren't on that channel", "441");
 					break;
 				}
+
+				kickReason = nickList[i];
+				if (cmd.size() > 3)
+					kickReason = cmd[3];
+				
+				message = ":" + currentClient->getNickName() + "!" + currentClient->getUserName() + "@" + currentClient->getIpAdd()
+					+ " KICK " + channelList[i] + " " + nickList[i] + " :" + kickReason + "\r\n";
 				for (size_t k = 0; k < this->clients.size(); k++)
 				{
 					if (it->second.isMember(this->clients[k].getFD()))
 					{
-						if (cmd.size() > 3)
-							kickReason = cmd[3];
-						else
-							kickReason = nickList[i];
-						message = ":" + currentClient->getClientName() + " KICK " + it->second.getChannelName() + " " + nickList[i] + " :" + kickReason + "\r\n";
+
 						send(this->clients[k].getFD(), message.c_str(), message.length(), 0);
-					} // check my optimization
+					}
 				}
 
 				if (it->second.isOperator(this->clients[j].getFD()))
@@ -394,6 +397,8 @@ void server::handleKick(client* currentClient, std::vector<std::string>& cmd)
 		}
 	}
 }
+
+
 
 void server::handleInvite(client* curr_client, std::vector<std::string>& cmd)
 {
@@ -409,8 +414,8 @@ void server::handleInvite(client* curr_client, std::vector<std::string>& cmd)
 
 	it = this->Channels.find(normalize(targetChannel));
     for (size_t i = 0; i < this->clients.size(); i++)
-		if (normalize(clients[i].getNickName()) == normalize(targetNick))
-			targetClient = &clients[i];
+        if (normalize(clients[i].getNickName()) == normalize(targetNick))
+            targetClient = &clients[i];
 
 	if (targetClient == NULL)
 		return (sendErrorMessage(curr_client, "INVITE", " : No such nick", "401"), void());
@@ -449,6 +454,7 @@ void server::handlePrivmsg(client* curr_client, std::vector<std::string>& cmd)
         return (sendErrorMessage(curr_client, "PRIVMSG", " :No recipient given (PRIVMSG)", "411"), void());
     if (cmdsize < 3)
         return (sendErrorMessage(curr_client, "PRIVMSG", " :No text to send", "412"), void());
+
     std::vector<std::string> targets = splitArgument(cmd[1]);
     std::map<std::string, Channel>::iterator it;
     size_t targetSize = targets.size();
@@ -526,7 +532,7 @@ void server::handleAuthentication(client* curr_client, std::vector<std::string>&
             return (sendErrorMessage(curr_client, "PASS", " :Password incorrect", "464"), curr_client->setPassStatusFalse(), void());
         curr_client->setAuthenRequirment(1);
     }
-    else if (!Command.compare("nick"))
+    else if (!Command.compare("nick") && curr_client->checkAuthenRequirment(1) == true)
     {
         if (cmdsize < 2 || cmd[1].empty())
             return (sendErrorMessage(curr_client, "NICK", " :No nickname given", "431"), void());
@@ -540,9 +546,9 @@ void server::handleAuthentication(client* curr_client, std::vector<std::string>&
         curr_client->setNickName(cmd[1]);
         curr_client->setAuthenRequirment(2);
     }
-    else
+    else if (curr_client->checkAuthenRequirment(2) == true)
     {
-        if (curr_client->isAuthenticat())
+        if (curr_client->isAuthenticat() )
             return (sendErrorMessage(curr_client, "USER", " :You may not reregister", "462"), void());
         if (cmdsize < 5 || cmd[1].empty())
             return (sendErrorMessage(curr_client, "USER", " :Not enough parameters", "461"), void());
@@ -550,7 +556,11 @@ void server::handleAuthentication(client* curr_client, std::vector<std::string>&
         curr_client->setRealName(cmd[4]);
         curr_client->setAuthenRequirment(3);
     }
-    std::string RPL_WELCOME = ":ircserv 001 "+curr_client->getNickName()\
+	else{
+		std::string response = "\nThe recommended order for a client to register is as follows:\nPass message\nNick message\nUser message\n\n";
+		send(curr_client->getFD(), response.c_str(), response.length(), 0);
+	}
+    std::string RPL_WELCOME = ":ircserv 001 "+curr_client->getNickName() \
     +" :Welcome to the Internet Relay Network " + curr_client->getClientName() + "\r\n";
     if (curr_client->checkAuthenRequirment() == true && curr_client->isAuthenticat() == false)
         return (curr_client->setAsAuthenticated(), 	send(curr_client->getFD(), RPL_WELCOME.c_str(), RPL_WELCOME.length(), 0), void());

@@ -56,5 +56,6 @@ class server
         bool handleSingleMode(client *currentClient,char mode, short addOrRemove, std::map<std::string, Channel>::iterator it, std::string parameter, std::string channelName);
         void handleKick(client* currentClient, std::vector<std::string>& cmd);
 
+
 };
 void sendErrorMessage(client * currentClient, std::string command, std::string message,std::string errCode);

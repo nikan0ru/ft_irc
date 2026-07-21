@@ -38,7 +38,7 @@ class client
         int getFD();
         bool isAuthenticat();
         void setAuthenRequirment(int id);
-        bool checkAuthenRequirment();
+        bool checkAuthenRequirment(int i);
 
         ~client();
 };

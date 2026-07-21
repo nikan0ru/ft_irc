@@ -28,12 +28,20 @@ void client::setRealName(std::string realName)
     this->realName = realName;
 }
 
+const std::string client::getClientName() const
+{
+	std::string ClientName;
+
+	ClientName = this->getNickName() + "!" + this->getUserName() + "@" + this->getIpAdd();
+	return ClientName;
+}
+
 int client::getFD()
 {
     return this->fd;
 };
 
-std::string client::getIpAdd()
+const std::string client::getIpAdd() const
 {
     return this->IpAdd;
 };

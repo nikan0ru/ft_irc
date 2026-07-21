@@ -2,7 +2,7 @@ NAME = ircserv
 
 SRCS = ./srcs/main.cpp ./srcs/server.cpp ./srcs/client.cpp ./srcs/channel.cpp
 
-FLAGS = -Wall -Wextra -std=c++98 -MMD
+FLAGS = -Wall -Wextra -Werror -std=c++98 -g -MMD
 
 OBJS = $(SRCS:.cpp=.o)
 
@@ -30,4 +30,4 @@ re: fclean all
 
 -include $(DEPS)
 
-.PHONY: all clean fclean re
+.PHONY: all clean fclean re test

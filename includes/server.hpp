@@ -32,7 +32,7 @@ class server
         ~server();
         int creat_sokect();
         client *getClient(int fd);
-        int listen_and_monitorfdstatus();
+		int listen_and_monitorfdstatus();
         int procces_connections();
         int acceptNewClient();
         int handelNewData(int cliFd);
@@ -46,15 +46,16 @@ class server
         void handlePrivmsg(client* curr_client, std::vector<std::string>& cmd);
         void handleInvite(client* curr_client, std::vector<std::string>& cmd);
         bool isValidNickName(std::string& nickName);
-	  	  void handleJoin(client * curr_client, std::vector<std::string> & command);
-	  	  void handleSingleJoin(client * curr_client, std::string & channelName, std::string &channelKey);
+	  	void handleJoin(client * curr_client, std::vector<std::string> & command);
+	  	void handleSingleJoin(client * curr_client, std::string & channelName, std::string &channelKey);
         void handleTopic(client * curr_client, std::vector<std::string> & command);
         void manageTopic(client * curr_client, std::vector<std::string> & command, std::map<std::string, Channel>::iterator &it);
         void broadcastNamesList(client * currentClient, std::map<std::string, Channel>::iterator &it);
         bool checkChannelModes(client *currentClient, std::string &channelName, std::string &channelKey, std::map<std::string, Channel>::iterator &it);
         void handleMode(client * currentClient, std::vector<std::string> &command);
         bool handleSingleMode(client *currentClient,char mode, short addOrRemove, std::map<std::string, Channel>::iterator it, std::string parameter, std::string channelName);
-        void handleKick(client* curr_client, std::vector<std::string>& cmd);
+        void handleKick(client* currentClient, std::vector<std::string>& cmd);
+
 
 };
 void sendErrorMessage(client * currentClient, std::string command, std::string message,std::string errCode);

@@ -114,7 +114,10 @@ void server::removeClient(int fd)
     for (size_t i = 0; i < clients.size(); i++)
     {
         if (clients[i].getFD() == fd)
+		{
             clients.erase(clients.begin() + i);
+			break;
+		}
     }
 	for(std::map<std::string, Channel>::iterator it = this->Channels.begin(); it != this->Channels.end(); it++)
 	{
@@ -124,6 +127,10 @@ void server::removeClient(int fd)
 			it->second.removeOperator(fd);
 		if(it->second.isInvited(fd))
 			it->second.removeInvite(fd);
+		if(it->second.getMembers().empty())
+			this->Channels.erase(it++);
+		else
+			it++;
 	}
 }
 
@@ -165,6 +172,7 @@ int server::listen_and_monitorfdstatus()
     this->pollfds.push_back(Newpollfd);
     signal(SIGINT, signalHandler);
     signal(SIGQUIT, signalHandler);
+    signal(SIGPIPE, SIG_IGN);
     std::cout << "server: waiting for connections...\n";
     while (g_running)
     {
@@ -289,7 +297,7 @@ void server::parse_and_exe(client *curClient, std::vector<std::string> splited_c
 	std::string Command;
 	if(splited_cmd.empty())
 		return;
-	splited_cmd[0] = toLowerCase(splited_cmd[0]);
+	splited_cmd[0] = normalize(splited_cmd[0]);
 	Command = splited_cmd[0];
     if((!Command.compare("user") || !Command.compare("nick") || !Command.compare("pass")))
         handleAuthentication(curClient, splited_cmd);
@@ -299,7 +307,7 @@ void server::parse_and_exe(client *curClient, std::vector<std::string> splited_c
 		handleTopic(curClient, splited_cmd);
 	else if(!Command.compare("mode"))
 		handleMode(curClient, splited_cmd);
-  else if(!Command.compare("privmsg")) 
+  else if(!Command.compare("privmsg"))
 		handlePrivmsg(curClient, splited_cmd);
   else if(!Command.compare("invite"))
 		handleInvite(curClient, splited_cmd);
@@ -309,7 +317,6 @@ void server::parse_and_exe(client *curClient, std::vector<std::string> splited_c
 		sendErrorMessage(curClient, Command, " :Unknown command", "421");
 
 };
-
 
 void server::handleKick(client* currentClient, std::vector<std::string>& cmd)
 {
@@ -368,7 +375,7 @@ void server::handleKick(client* currentClient, std::vector<std::string>& cmd)
 				kickReason = nickList[i];
 				if (cmd.size() > 3)
 					kickReason = cmd[3];
-				
+
 				message = ":" + currentClient->getNickName() + "!" + currentClient->getUserName() + "@" + currentClient->getIpAdd()
 					+ " KICK " + channelList[i] + " " + nickList[i] + " :" + kickReason + "\r\n";
 				for (size_t k = 0; k < this->clients.size(); k++)
@@ -407,8 +414,8 @@ void server::handleInvite(client* curr_client, std::vector<std::string>& cmd)
 
 	it = this->Channels.find(normalize(targetChannel));
     for (size_t i = 0; i < this->clients.size(); i++)
-        if (normalize(clients[i].getNickName()) == normalize(targetNick))
-            targetClient = &clients[i];
+		if (normalize(clients[i].getNickName()) == normalize(targetNick))
+			targetClient = &clients[i];
 
 	if (targetClient == NULL)
 		return (sendErrorMessage(curr_client, "INVITE", " : No such nick", "401"), void());
@@ -437,6 +444,7 @@ void server::handleInvite(client* curr_client, std::vector<std::string>& cmd)
     send(targetClient->getFD(), textMsg.c_str(), textMsg.size(), 0);
 }
 
+
 void server::handlePrivmsg(client* curr_client, std::vector<std::string>& cmd)
 {
     int cmdsize = cmd.size();
@@ -455,42 +463,40 @@ void server::handlePrivmsg(client* curr_client, std::vector<std::string>& cmd)
     for (size_t i = 0; i < targetSize; i++)
     {
         std::string target = targets[i];
-        std::cout << target << "\n";
         if (target[0] == '&' || target[0] == '#')
         {
             if ((it = Channels.find(normalize(target))) == Channels.end())
             {
-                sendErrorMessage(curr_client, "PRIVMSG", " :No such channel", "403");
+                sendErrorMessage(curr_client, target, " :No such channel", "403");
                 continue;
             }
             if (!it->second.isMember(curr_client->getFD()))
             {
-                sendErrorMessage(curr_client, "PRIVMSG", " :Cannot send to channel", "404");
+                sendErrorMessage(curr_client, target, " :Cannot send to channel", "404");
                 continue;
             }
 
-            textMsg = ":" +curr_client->getNickName() + "!" + curr_client->getUserName() + "@"
-                + curr_client->getIpAdd() + " PRIVMSG " + it->second.getChannelName() + " " + cmd[2] +"\r\n";
-
-            for (size_t j = 0; j < this->clients.size(); j++)
-                if(it->second.isMember(this->clients[j].getFD()) && (this->clients[j].getFD() != curr_client->getFD()))
-                    send(this->clients[j].getFD(), textMsg.c_str(), textMsg.size(), 0);
+            textMsg = ":" + curr_client->getClientName() + " PRIVMSG " + it->second.getChannelName() + " :" + cmd[2] +"\r\n";
+			for (std::set<int>::iterator sit = it->second.getMembers().begin(); sit != it->second.getMembers().end(); sit++)
+			{
+				if(*sit != curr_client->getFD())
+					send(*sit, textMsg.c_str(), textMsg.size(), 0);
+			}
         }
         else
         {
             bool targetFound = false;
             for (size_t j = 0; j < clients.size(); j++)
             {
-                if((normalize(clients[j].getNickName()) == normalize(target)) && (curr_client->getFD() != clients[j].getFD())) //must send to it self her ??
+                if(normalize(clients[j].getNickName()) == normalize(target)) //must send to it self her ???
                 {
-                    textMsg = ":" +curr_client->getNickName() + "!" + curr_client->getUserName() + "@"
-                       + curr_client->getIpAdd() + " PRIVMSG " + target + " :" + cmd[2] +"\r\n";
+                    textMsg = ":" + curr_client->getClientName() + " PRIVMSG " + target + " :" + cmd[2] +"\r\n";
                     send(this->clients[j].getFD(), textMsg.c_str(), textMsg.size(), 0);
                     targetFound = true;
                 }
             }
             if (targetFound == false)
-                sendErrorMessage(curr_client, "PRIVMSG", " : No such nick", "401");
+                sendErrorMessage(curr_client, target, " :No such nick", "401");
         }
     }
 }
@@ -554,9 +560,8 @@ void server::handleAuthentication(client* curr_client, std::vector<std::string>&
 		std::string response = "\nThe recommended order for a client to register is as follows:\nPass message\nNick message\nUser message\n\n";
 		send(curr_client->getFD(), response.c_str(), response.length(), 0);
 	}
-    std::string RPL_WELCOME = ":ircserv 001 "+curr_client->getNickName()\
-    +" :Welcome to the Internet Relay Network " +curr_client->getNickName() \
-    + "!" + curr_client->getUserName() +"@"+ curr_client->getIpAdd() + "\r\n";
+    std::string RPL_WELCOME = ":ircserv 001 "+curr_client->getNickName() \
+    +" :Welcome to the Internet Relay Network " + curr_client->getClientName() + "\r\n";
     if (curr_client->checkAuthenRequirment(3) == true && curr_client->isAuthenticat() == false)
         return (curr_client->setAsAuthenticated(), 	send(curr_client->getFD(), RPL_WELCOME.c_str(), RPL_WELCOME.length(), 0), void());
     return;
@@ -598,6 +603,7 @@ void server::handleSingleJoin(client * currentClient,std::string & channelName, 
 	std::map<std::string, Channel>::iterator it;
 	std::pair<std::map<std::string, Channel>::iterator, bool> result;
 	std::string lowerCaseChannelName;
+	std::stringstream ss;
 	if(channelName.size() == 1 && (channelName[0] == '#' || channelName[0]== '&'))
 	{
 		sendErrorMessage(currentClient,channelName, " :No such channel", "403");
@@ -608,12 +614,11 @@ void server::handleSingleJoin(client * currentClient,std::string & channelName, 
 		sendErrorMessage(currentClient,channelName, " :Bad Channel Mask", "476");
 		return;
 	}
-	lowerCaseChannelName = toLowerCase(channelName);
+	lowerCaseChannelName = normalize(channelName);
 	it = this->Channels.find(lowerCaseChannelName);
 	if(it == this->Channels.end())
 	{
 		result = this->Channels.insert(std::make_pair(lowerCaseChannelName, Channel(channelName)));
-		std::cout << "Channel created successfully!!!!! deleteme"<< std::endl;
 		it = result.first;
 		it->second.addMember(currentClient->getFD());
 		it->second.addOperator(currentClient->getFD());
@@ -626,26 +631,19 @@ void server::handleSingleJoin(client * currentClient,std::string & channelName, 
 		if(it->second.isInvited(currentClient->getFD()))
 			it->second.removeInvite(currentClient->getFD());
 	}
-	reply = ":" +currentClient->getNickName() + "!" + currentClient->getUserName() + "@"
-	+ currentClient->getIpAdd() + " JOIN " + it->second.getChannelName() +"\r\n";
-	for (size_t i = 0; i < this->clients.size(); i++)
+	reply = ":" + currentClient->getClientName() + " JOIN " + it->second.getChannelName() +"\r\n";
+	for (std::set<int>::iterator sit = it->second.getMembers().begin(); sit != it->second.getMembers().end(); sit++)
 	{
-		if(it->second.isMember(this->clients[i].getFD()))
-		{
-			send(this->clients[i].getFD(), reply.c_str(), reply.size(), 0);
-		}
-	}
-	if(it->second.getMembers().size() == 1)
-	{
-		reply = ":ircserv MODE " + it->second.getChannelName() + " +o " + currentClient->getNickName() + "\r\n";
-		send(currentClient->getFD(), reply.c_str(), reply.length(), 0);
+		send(*sit, reply.c_str(), reply.size(), 0);
 	}
 
 	if(!it->second.getTopic().empty())
 	{
-		reply = ":ircserv 332 " + currentClient->getNickName() + " "
-				+ it->second.getChannelName() + " :" + it->second.getTopic() + "\r\n";
+		reply = ":ircserv 332 " + currentClient->getNickName() + " " + it->second.getChannelName() + " :" + it->second.getTopic() + "\r\n";
 		send(currentClient->getFD(), reply.c_str(), reply.size(), 0);
+		ss << it->second.getTopicModificationDate();
+		reply = ":ircserv 333 " + currentClient->getNickName() + " " + it->second.getChannelName() + " " + it->second.getTopicSetter() + " " + ss.str() + "\r\n";
+		send(currentClient->getFD(), reply.c_str(), reply.length(), 0);
 	}
 	server::broadcastNamesList(currentClient,  it);
 }
@@ -654,7 +652,6 @@ bool server::checkChannelModes(client *currentClient, std::string &channelName, 
 {
 	if (it->second.isMember(currentClient->getFD()))
 	{
-		std::cout << "is already member of this channel delete me" << std::endl;
 		return false;
 	}
 	if (it->second.isInviteOnly() && !it->second.isInvited(currentClient->getFD()))
@@ -679,7 +676,6 @@ void server::handleMode(client * currentClient, std::vector<std::string> &comman
 {
 	std::map<std::string, Channel>::iterator it;
 	std::string channelName;
-	std::string lowerCaseChannelName;
 	std::string modeString;
 	std::string appliedModes;
 	std::string appliedParams;
@@ -698,8 +694,7 @@ void server::handleMode(client * currentClient, std::vector<std::string> &comman
 		return;
 	}
 	channelName = command[1];
-	lowerCaseChannelName = toLowerCase(channelName);
-	it = this->Channels.find(lowerCaseChannelName);
+	it = this->Channels.find(normalize(channelName));
 	if(it == this->Channels.end())
 	{
 		sendErrorMessage(currentClient,channelName, " :No such channel", "403");
@@ -744,7 +739,10 @@ void server::handleMode(client * currentClient, std::vector<std::string> &comman
 		if (((modeString[i] == 'k' || modeString[i] == 'l') && addOrRemove == 1))
 		{
 			if (argIndex >= command.size())
+			{
+				sendErrorMessage(currentClient, "MODE"," :Not enough parameters", "461");
 				continue;
+			}
 			if(handleSingleMode(currentClient, modeString[i], addOrRemove, it, command[argIndex], channelName))
 			{
 				appliedModes += "+" + std::string(1, modeString[i]);
@@ -763,7 +761,10 @@ void server::handleMode(client * currentClient, std::vector<std::string> &comman
 				}
 			}
 			if (argIndex >= command.size())
+			{
+				sendErrorMessage(currentClient, "MODE"," :Not enough parameters", "461");
 				continue;
+			}
 			if(handleSingleMode(currentClient, modeString[i], addOrRemove, it, command[argIndex], channelName))
 			{
 				if(addOrRemove == 1)
@@ -790,16 +791,13 @@ void server::handleMode(client * currentClient, std::vector<std::string> &comman
 	}
 	if (!appliedModes.empty())
 	{
-		appliedModes = ":" + currentClient->getNickName() + "!" + currentClient->getUserName() +\
-						"@" + currentClient->getIpAdd() + " MODE " + it->second.getChannelName() + " " + appliedModes +\
+		appliedModes = ":" + currentClient->getClientName() + " MODE " + it->second.getChannelName() + " " + appliedModes +\
 						 appliedParams + "\r\n";
-		for (size_t i = 0; i < this->clients.size(); i++)
+		for (std::set<int>::iterator sit = it->second.getMembers().begin(); sit != it->second.getMembers().end(); sit++)
 		{
-			if (it->second.isMember(this->clients[i].getFD()))
-			{
-				send(this->clients[i].getFD(), appliedModes.c_str(), appliedModes.size(), 0);
-			}
+			send(*sit, appliedModes.c_str(), appliedModes.size(), 0);
 		}
+
 	}
 }
 
@@ -817,7 +815,7 @@ bool server::handleSingleMode(client *currentClient, char mode, short addOrRemov
 			it->second.setInviteOnly(true);
 			return true;
 		}
-		else if(addOrRemove == -1)
+		else if(addOrRemove == -1 && it->second.isInviteOnly())
 		{
 			it->second.setInviteOnly(false);
 			return true;
@@ -826,25 +824,38 @@ bool server::handleSingleMode(client *currentClient, char mode, short addOrRemov
 	}
 	else if(mode == 't')
 	{
-		if(addOrRemove == 1)
+		if(addOrRemove == 1 && !it->second.isTopicRestricted())
+		{
 			it->second.setTopicRestriction(true);
-		else if(addOrRemove == -1)
+			return true;
+		}
+		else if(addOrRemove == -1 && it->second.isTopicRestricted())
+		{
 			it->second.setTopicRestriction(false);
-		return true;
+			return true;
+		}
+		return false;
 	}
 	else if(mode == 'k')
 	{
 		if(addOrRemove == 1)
 		{
+			if(it->second.isLocked() && it->second.getChannelKey() == parameter)
+			{
+				sendErrorMessage(currentClient, it->second.getChannelName(), " :Channel key already set", "467");
+				return false;
+			}
 			it->second.setLocked(true);
 			it->second.setChannelKey(parameter);
+			return true;
 		}
-		else if(addOrRemove == -1)
+		else if(addOrRemove == -1 && it->second.isLocked())
 		{
 			it->second.setLocked(false);
 			it->second.setChannelKey("");
+			return true;
 		}
-		return true;
+		return false;
 	}
 	else if(mode == 'l')
 	{
@@ -859,7 +870,6 @@ bool server::handleSingleMode(client *currentClient, char mode, short addOrRemov
 					return false;
 				}
 			}
-
 			ss << parameter;
 			ss >> limit;
 			if(limit == 0)
@@ -868,32 +878,42 @@ bool server::handleSingleMode(client *currentClient, char mode, short addOrRemov
 					send(currentClient->getFD(), reply.c_str(), reply.length(), 0);
 				return false;
 			}
+			if (it->second.isLimited() && it->second.getMaxLimit() == limit)
+    			return false;
 			it->second.setLimitState(true);
 			it->second.setMaxLimit(limit);
+			return true;
 		}
-		else if(addOrRemove == -1)
+		else if(addOrRemove == -1 && it->second.isLimited())
 		{
 			it->second.setLimitState(false);
 			it->second.setMaxLimit(0);
+			return true;
 		}
-		return true;
+		return false;
 	}
 	else if (mode == 'o')
 	{
 		for (size_t i = 0; i < this->clients.size(); i++)
 		{
-			if (this->clients[i].getNickName() == parameter)
+			if (normalize(this->clients[i].getNickName()) == normalize(parameter))
 			{
 				if (!it->second.isMember(this->clients[i].getFD()))
 				{
 					sendErrorMessage(currentClient,parameter + " " + channelName, " :They aren't on that channel", "441");
 					return false;
 				}
-				if (addOrRemove == 1)
+				if (addOrRemove == 1 && !it->second.isOperator(this->clients[i].getFD()))
+				{
 					it->second.addOperator(this->clients[i].getFD());
-				else if (addOrRemove == -1)
+					return true;
+				}
+				else if (addOrRemove == -1 && it->second.isOperator(this->clients[i].getFD()))
+				{
 					it->second.removeOperator(this->clients[i].getFD());
-				return true;
+					return true;
+				}
+				return false;
 			}
 		}
 		sendErrorMessage(currentClient, parameter, " :No such nick", "401");
@@ -978,8 +998,8 @@ void server::handleTopic(client * currentClient, std::vector<std::string> & comm
 	std::string response;
 	std::map<std::string, Channel>::iterator it;
 	std::string channelName;
-	std::string modificationTime;
 	std::stringstream ss;
+
 	if(!currentClient->isAuthenticat())
 	{
 		sendErrorMessage(currentClient,"TOPIC", " :You have not registered", "451");
@@ -991,7 +1011,7 @@ void server::handleTopic(client * currentClient, std::vector<std::string> & comm
 		sendErrorMessage(currentClient,command[0], " :Not enough parameters", "461");
 		return;
 	}
-	channelName = toLowerCase(command[1]);
+	channelName = normalize(command[1]);
 	it = this->Channels.find(channelName);
 	if(it == this->Channels.end())
 	{
@@ -1025,20 +1045,21 @@ void server::manageTopic(client * currentClient, std::vector<std::string> & comm
 {
 	std::string channelName;
 	std::string topicMessage;
+	std::string topicSetter;
 	std::string reply;
-	channelName = command[1];
-	topicMessage = command[2];
 
+	channelName = command[1];
 	if(it->second.isTopicRestricted() && !it->second.isOperator(currentClient->getFD()))
 	{
 		sendErrorMessage(currentClient, channelName, " :You're not channel operator", "482");
 		return;
-
 	}
+	topicMessage = command[2];
 	it->second.setTopic(topicMessage);
 	if(!topicMessage.empty())
 	{
-		it->second.setTopicSetter(currentClient->getNickName());
+		topicSetter = currentClient->getClientName() ;
+		it->second.setTopicSetter(topicSetter);
 		it->second.setTopicModificationDate(time(NULL));
 	}
 	else
@@ -1046,15 +1067,12 @@ void server::manageTopic(client * currentClient, std::vector<std::string> & comm
 		it->second.setTopicSetter("");
 		it->second.setTopicModificationDate(0);
 	}
-	reply = ":" + currentClient->getNickName() + "!" + currentClient->getUserName() + "@" + currentClient->getIpAdd()
-		+ " TOPIC " + it->second.getChannelName() + " :" + topicMessage + "\r\n";
-	for (size_t i = 0; i < this->clients.size(); i++)
+	reply = ":" + currentClient->getClientName()+ " TOPIC " + it->second.getChannelName() + " :" + topicMessage + "\r\n";
+	for (std::set<int>::iterator sit = it->second.getMembers().begin(); sit !=  it->second.getMembers().end(); sit++)
 	{
-		if (it->second.isMember(this->clients[i].getFD()))
-		{
-			send(this->clients[i].getFD(), reply.c_str(), reply.length(), 0);
-		}
+		send(*sit, reply.c_str(), reply.length(), 0);
 	}
+
 }
 
 int server::handelNewData(int cliFd)

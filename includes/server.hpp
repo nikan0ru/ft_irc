@@ -32,7 +32,7 @@ class server
         ~server();
         int creat_sokect();
         client *getClient(int fd);
-        int listen_and_monitorfdstatus();
+		int listen_and_monitorfdstatus();
         int procces_connections();
         int acceptNewClient();
         int handelNewData(int cliFd);
@@ -46,8 +46,8 @@ class server
         void handlePrivmsg(client* curr_client, std::vector<std::string>& cmd);
         void handleInvite(client* curr_client, std::vector<std::string>& cmd);
         bool isValidNickName(std::string& nickName);
-	  	  void handleJoin(client * curr_client, std::vector<std::string> & command);
-	  	  void handleSingleJoin(client * curr_client, std::string & channelName, std::string &channelKey);
+	  	void handleJoin(client * curr_client, std::vector<std::string> & command);
+	  	void handleSingleJoin(client * curr_client, std::string & channelName, std::string &channelKey);
         void handleTopic(client * curr_client, std::vector<std::string> & command);
         void manageTopic(client * curr_client, std::vector<std::string> & command, std::map<std::string, Channel>::iterator &it);
         void broadcastNamesList(client * currentClient, std::map<std::string, Channel>::iterator &it);

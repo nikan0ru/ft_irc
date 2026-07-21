@@ -24,6 +24,8 @@ class client
     	const std::string &getUserName() const;
         const std::string &getNickName() const;
     	const std::string &getRealName() const;
+		const std::string getClientName() const;
+
         std::vector<std::string> clientGetBuff();
         void setFD(int FD);
         void setIpAdd(std::string CIpAdd);
@@ -32,7 +34,7 @@ class client
         void setNickName(std::string nickName);
         void setUserName(std::string userName);
         void setRealName(std::string realName);
-        std::string getIpAdd();
+        const std::string getIpAdd() const;
         int getFD();
         bool isAuthenticat();
         void setAuthenRequirment(int id);

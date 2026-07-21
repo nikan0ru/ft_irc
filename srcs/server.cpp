@@ -307,7 +307,7 @@ void server::parse_and_exe(client *curClient, std::vector<std::string> splited_c
 		handleTopic(curClient, splited_cmd);
 	else if(!Command.compare("mode"))
 		handleMode(curClient, splited_cmd);
-  else if(!Command.compare("privmsg")) 
+  else if(!Command.compare("privmsg"))
 		handlePrivmsg(curClient, splited_cmd);
   else if(!Command.compare("invite"))
 		handleInvite(curClient, splited_cmd);
@@ -375,7 +375,7 @@ void server::handleKick(client* currentClient, std::vector<std::string>& cmd)
 				kickReason = nickList[i];
 				if (cmd.size() > 3)
 					kickReason = cmd[3];
-				
+
 				message = ":" + currentClient->getNickName() + "!" + currentClient->getUserName() + "@" + currentClient->getIpAdd()
 					+ " KICK " + channelList[i] + " " + nickList[i] + " :" + kickReason + "\r\n";
 				for (size_t k = 0; k < this->clients.size(); k++)
@@ -414,8 +414,8 @@ void server::handleInvite(client* curr_client, std::vector<std::string>& cmd)
 
 	it = this->Channels.find(normalize(targetChannel));
     for (size_t i = 0; i < this->clients.size(); i++)
-        if (normalize(clients[i].getNickName()) == normalize(targetNick))
-            targetClient = &clients[i];
+		if (normalize(clients[i].getNickName()) == normalize(targetNick))
+			targetClient = &clients[i];
 
 	if (targetClient == NULL)
 		return (sendErrorMessage(curr_client, "INVITE", " : No such nick", "401"), void());
@@ -562,7 +562,7 @@ void server::handleAuthentication(client* curr_client, std::vector<std::string>&
 	}
     std::string RPL_WELCOME = ":ircserv 001 "+curr_client->getNickName() \
     +" :Welcome to the Internet Relay Network " + curr_client->getClientName() + "\r\n";
-    if (curr_client->checkAuthenRequirment() == true && curr_client->isAuthenticat() == false)
+    if (curr_client->checkAuthenRequirment(3) == true && curr_client->isAuthenticat() == false)
         return (curr_client->setAsAuthenticated(), 	send(curr_client->getFD(), RPL_WELCOME.c_str(), RPL_WELCOME.length(), 0), void());
     return;
 }

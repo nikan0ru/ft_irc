@@ -276,7 +276,7 @@ PHASE 2: AUTOMATED TCP 3-WAY HANDSHAKE (Network Inbound)
 
 
 ===================================================================================================================
-PHASE 3: CONNECTION ACCEPTANCE (poll -> accept)
+PHASE 3: CONNECTION ACCEPTANCE (poll -> accept -> fcntl)
 ===================================================================================================================
 
  [C++ USER SPACE]                                     [LINUX KERNEL / TCP STACK]
@@ -291,9 +291,11 @@ PHASE 3: CONNECTION ACCEPTANCE (poll -> accept)
     └──────────────────────────────────────────────► Inspects listen_fd's Accept Queue (sk_ack_backlog)
                                                      - Pops the top TCP_ESTABLISHED child socket
                                                      - Assigns next available index: fd[4] (client_fd)
-                                                     - Sets O_NONBLOCK on client_fd
+                                                     - Socket defaults to BLOCKING mode!
                                                      - Returns integer fd[4] to C++ program
-
+ 3. fcntl(client_fd, F_SETFL, O_NONBLOCK);
+    │
+    └──────────────────────────────────────────────► Sets O_NONBLOCK flag on struct file for fd[4]
 
 ===================================================================================================================
 PHASE 4: ACTIVE DATA COMMUNICATION (PRIVMSG, JOIN, KICK, etc.)

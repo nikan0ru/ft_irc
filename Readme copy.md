@@ -120,11 +120,17 @@ IRC protocol have  a core conceponents:
 
 
 
+# 🏗️ Architecture & Linux Kernel TCP Internals
 
-SECTION I: Complete Memory Architecture & Handle Mapping
-This diagram shows how a File Descriptor in your C++ server maps into kernel memory structures and protocol lookup tables.
+This section details how the server interacts with the Linux Kernel networking stack, mapping user-space C++ system calls (`socket`, `bind`, `listen`, `poll`, `accept`, `recv`, `send`) directly to internal kernel data structures (`struct tcp_sock`), dual hash table lookups (`lhash2` & `ehash`), and system memory queues.
 
-        
+---
+
+## 1. Memory Architecture & File Descriptor Mapping
+
+This diagram illustrates how an integer File Descriptor (`fd`) in the C++ server process maps through the Virtual File System (VFS) down to the underlying transport control blocks and global kernel lookup tables.
+
+```text
 +-----------------------------------------------------------------------------------------------------------------+
 |                                                   USER SPACE                                                    |
 |                                                                                                                 |
@@ -186,12 +192,15 @@ This diagram shows how a File Descriptor in your C++ server maps into kernel mem
 |   │                                                           +-----------------------------------------+   │   |
 |   ===========================================================================================================   |
 +-----------------------------------------------------------------------------------------------------------------+
+```
 
+---
 
-SECTION II: Step-by-Step Lifecycle Schema
-This sequential flowchart illustrates the precise interaction between your C++ server calls, kernel TCP operations, hash table lookups, and queue states across all five main phases of server operation.
+## 2. Socket Lifecycle & Execution Flow
 
+This sequential flowchart tracks connection initialization, automated TCP handshakes, data exchange, and disconnect handling.
 
+```text
 ===================================================================================================================
 PHASE 1: SERVER INITIALIZATION (socket -> bind -> fcntl -> listen)
 ===================================================================================================================
@@ -361,3 +370,21 @@ PHASE 5: CONNECTION TEARDOWN & DISCONNECT HANDLING
                                                      - Removes socket from ehash table
                                                      - Frees fd[4] index in process FD table
                                                      - Destroys associated struct file & tcp_sock memory
+```
+
+---
+
+## 3. System Call & State Reference Matrix
+
+| Step / Syscall | C++ Function | Kernel Socket State | Active Hash Table | Active Queue | Key Event / Behavior |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **1. Create** | `socket()` | `TCP_CLOSE` | *None* | *None* | Allocates `struct tcp_sock` & FD handle (`listen_fd`). |
+| **2. Bind** | `bind()` | `TCP_CLOSE` | `bhash` / `bhash2` | *None* | Binds IP & Port to socket structure. |
+| **3. Listen** | `listen()` | `TCP_LISTEN` | **`lhash2`** (2-Tuple) | `sk_ack_backlog` | Registers listening socket for incoming 2-Tuple lookups. |
+| **4. Handshake** | *Kernel Internal* | `TCP_NEW_SYN_RECV` | **`ehash`** (4-Tuple) | SYN Queue | Creates temporary `request_sock` upon receiving `SYN`. |
+| **5. Complete** | *Kernel Internal* | `TCP_ESTABLISHED` | **`ehash`** (4-Tuple) | `sk_ack_backlog` | Clones full `tcp_sock` child socket; moves it to Accept Queue. |
+| **6. Accept** | `accept()` | `TCP_ESTABLISHED` | **`ehash`** (4-Tuple) | `sk_ack_backlog` | Pops child socket from Accept Queue; returns `client_fd`. |
+| **7. Read Data** | `recv()` | `TCP_ESTABLISHED` | **`ehash`** (4-Tuple) | `sk_receive_queue` | Copies data from kernel RX Queue into user-space buffer. |
+| **8. Write Data**| `send()` | `TCP_ESTABLISHED` | **`ehash`** (4-Tuple) | `sk_write_queue` | Copies data to kernel TX Queue for network transmission. |
+| **9. Disconnect**| `recv() == 0` | `TCP_CLOSE_WAIT` | **`ehash`** (4-Tuple) | *None* | Kernel receives `FIN`; `recv()` returns `0` bytes. |
+| **10. Close** | `close()` | `TCP_CLOSED` | *Removed* | *Flushed* | Removes socket from `ehash` and frees kernel memory. |

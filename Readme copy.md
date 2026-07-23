@@ -115,4 +115,249 @@ IRC protocol have  a core conceponents:
         IP Address → which machine on the network
         Port → which specific program/service on that machine
 
+
+
+
+
+
+
+SECTION I: Complete Memory Architecture & Handle Mapping
+This diagram shows how a File Descriptor in your C++ server maps into kernel memory structures and protocol lookup tables.
+
         
++-----------------------------------------------------------------------------------------------------------------+
+|                                                   USER SPACE                                                    |
+|                                                                                                                 |
+|   C++ Server Application (Process Table)                                                                        |
+|   +---------------------------------------------------------------------------------------------------------+   |
+|   | File Descriptor (FD) Array (task_struct -> files -> fd_array[])                                         |   |
+|   |                                                                                                         |   |
+|   |   fd[3]  <---  Listening Socket Handle (listen_fd)                                                       |   |
+|   |   fd[4]  <---  Connected Client Socket Handle (client_fd)                                                  |   |
+|   +---------------------------------------------------------------------------------------------------------+   |
++-----------------------------------------------------------------------------------------------------------------+
+                                       │                                   │
+                                       ▼                                   ▼
+===================================================================================================================
+                                         KERNEL SPACE (VFS & Socket Layer)
+===================================================================================================================
+|                                                                                                                 |
+|   Open File Table (struct file)                                                                                 |
+|   +---------------------------------------+               +---------------------------------------+             |
+|   | struct file for [fd 3]                |               | struct file for [fd 4]                |             |
+|   |  - f_flags: O_NONBLOCK                |               |  - f_flags: O_NONBLOCK                |             |
+|   |  - f_op   : socket_file_ops           |               |  - f_op   : socket_file_ops           |             |
+|   |  - private_data ──────────────────┐   |               |  - private_data ──────────────────┐   |             |
+|   +-----------------------------------|---+               +-----------------------------------|---+             |
+|                                       │                                                       │                 |
+|   BSD Socket Layer (struct socket)    │                                                       │                 |
+|   +-----------------------------------▼---+               +-----------------------------------▼---+             |
+|   | struct socket (Listening)             |               | struct socket (Client Connected)      |             |
+|   |  - state: SS_UNCONNECTED              |               |  - state: SS_CONNECTED                |             |
+|   |  - sk   ──────────────────────────┐   |               |  - sk   ──────────────────────────┐   |             |
+|   +-------------------------------|-------+               +-------------------------------|-------+             |
+|                                   │                                                       │                     |
+====================================|=======================================================|======================
+                                    │ KERNEL SPACE (TCP/IP Protocol Stack)                  │
+====================================|=======================================================|======================
+|                                   ▼                                                       ▼                     |
+|   Full Socket Object (struct tcp_sock)                    Full Socket Object (struct tcp_sock)                  |
+|   +---------------------------------------------------+   +---------------------------------------------------+ |
+|   | Listening Server Socket                           |   | Established Client Socket                         | |
+|   |  - sk_state : TCP_LISTEN                          |   |  - sk_state : TCP_ESTABLISHED                     | |
+|   |  - skc_num  : 6667 (Bound Port)                 |   |  - 4-Tuple   : LocalIP:6667 <-> ClientIP:54321  | |
+|   |  - skc_rcv_saddr : 0.0.0.0                        |   |                                                   | |
+|   |                                                   |   |  - sk_receive_queue (RX Queue):                   | |
+|   |  - sk_ack_backlog (Accept Queue):                 |   |    [sk_buff] -> [sk_buff] (Incoming Data)         | |
+|   |    [child_sock_1] -> [child_sock_2]               |   |                                                   | |
+|   |    (Fully established connections awaiting accept)|   |  - sk_write_queue (TX Queue):                     | |
+|   |                                                   |   |    [sk_buff] -> [sk_buff] (Outgoing Data)         | |
+|   +---------------------------------------------------+   +---------------------------------------------------+ |
+|                                   │                                                       │                     |
+|                                   ▼                                                       ▼                     |
+|   ===========================================================================================================   |
+|   │                                   GLOBAL KERNEL TCP HASH TABLES                         │   |
+|   │                                                                                                         │   |
+|   │   1. lhash2 (Listening Hash Table)                        2. ehash (Established Hash Table)             │   |
+|   │   +-----------------------------------------------+       +-----------------------------------------+   │   |
+|   │   | Key: 2-Tuple [DstIP, DstPort]                 |       | Key: 4-Tuple [SrcIP,SrcPort,DstIP,DstP] |   │   |
+|   │   | Value: Pointer to Listening struct tcp_sock   |       | Value: Pointer to Active struct tcp_sock|   │   |
+|   │   +-----------------------------------------------+       |   (Holds: TCP_ESTABLISHED & request_sock)|   │   |
+|   │                                                           +-----------------------------------------+   │   |
+|   ===========================================================================================================   |
++-----------------------------------------------------------------------------------------------------------------+
+
+
+SECTION II: Step-by-Step Lifecycle Schema
+This sequential flowchart illustrates the precise interaction between your C++ server calls, kernel TCP operations, hash table lookups, and queue states across all five main phases of server operation.
+
+
+===================================================================================================================
+PHASE 1: SERVER INITIALIZATION (socket -> bind -> fcntl -> listen)
+===================================================================================================================
+
+ [C++ USER SPACE]                                     [LINUX KERNEL / TCP STACK]
+ ────────────────                                     ──────────────────────────
+ 
+ 1. int listen_fd = socket(AF_INET, SOCK_STREAM, 0);
+    │
+    └──────────────────────────────────────────────► Allocates struct socket & struct tcp_sock
+                                                     - State: TCP_CLOSE
+                                                     - FD Index: fd[3]
+                                                     - Hash Tables: NOT in lhash2, NOT in ehash
+
+ 2. bind(listen_fd, &addr, sizeof(addr));
+    │
+    └──────────────────────────────────────────────► Saves IP (skc_rcv_saddr) & Port (skc_num)
+                                                     - Registers port in bhash / bhash2 (bind tables)
+
+ 3. fcntl(listen_fd, F_SETFL, O_NONBLOCK);
+    │
+    └──────────────────────────────────────────────► Sets O_NONBLOCK flag on struct file for fd[3]
+
+ 4. listen(listen_fd, SOMAXCONN);
+    │
+    └──────────────────────────────────────────────► Changes state: TCP_CLOSE ──► TCP_LISTEN
+                                                     - Hashes 2-Tuple [IP:Port]
+                                                     - Inserts socket into global lhash2 table
+                                                     - Initializes Accept Queue (sk_ack_backlog)
+
+
+===================================================================================================================
+PHASE 2: AUTOMATED TCP 3-WAY HANDSHAKE (Network Inbound)
+===================================================================================================================
+
+ [CLIENT / NETWORK]                                   [LINUX KERNEL / TCP STACK]
+ ──────────────────                                   ──────────────────────────
+
+ 1. Client sends [TCP SYN] ────────────────────────► Packet Arrives at Network Card (NIC)
+                                                     │
+                                                     ▼
+                                                     Socket Lookup on Rx:
+                                                     1. Search ehash via 4-Tuple [SrcIP,SrcPort,DstIP,DstPort]
+                                                        └──► Result: NO MATCH (Not an existing connection)
+                                                     2. Fallback to lhash2 via 2-Tuple [DstIP, DstPort]
+                                                        └──► Result: MATCH FOUND! (Server listening socket fd[3])
+                                                     │
+                                                     ▼
+                                                     Kernel Handshake Processing:
+                                                     - Allocates lightweight request_sock
+                                                     - State: TCP_NEW_SYN_RECV
+                                                     - Stores 4-Tuple in request_sock
+                                                     - Inserts request_sock into ehash table
+                                                     - Puts request_sock in SYN Queue
+                                                     │
+                                   ◄─────────────────┘ Kernel sends [TCP SYN+ACK] reply
+
+ 2. Client sends [TCP ACK] ────────────────────────► Packet Arrives at NIC
+                                                     │
+                                                     ▼
+                                                     Socket Lookup on Rx:
+                                                     1. Search ehash via 4-Tuple
+                                                        └──► Result: MATCH FOUND! (Finds request_sock)
+                                                     │
+                                                     ▼
+                                                     Kernel Completion Processing:
+                                                     - Clones full struct tcp_sock from listening socket
+                                                     - Sets state to TCP_ESTABLISHED
+                                                     - Copies 4-Tuple into child socket
+                                                     - Replaces request_sock with child socket in ehash
+                                                     - Moves child socket into Accept Queue (sk_ack_backlog)
+                                                     - Marks poll() on listen_fd with POLLIN
+
+
+===================================================================================================================
+PHASE 3: CONNECTION ACCEPTANCE (poll -> accept)
+===================================================================================================================
+
+ [C++ USER SPACE]                                     [LINUX KERNEL / TCP STACK]
+ ────────────────                                     ──────────────────────────
+
+ 1. poll(&pollfds, size, -1);
+    │
+    ├─► Wakes up because listen_fd[3] has POLLIN flag
+    │
+ 2. int client_fd = accept(listen_fd, ...);
+    │
+    └──────────────────────────────────────────────► Inspects listen_fd's Accept Queue (sk_ack_backlog)
+                                                     - Pops the top TCP_ESTABLISHED child socket
+                                                     - Assigns next available index: fd[4] (client_fd)
+                                                     - Sets O_NONBLOCK on client_fd
+                                                     - Returns integer fd[4] to C++ program
+
+
+===================================================================================================================
+PHASE 4: ACTIVE DATA COMMUNICATION (PRIVMSG, JOIN, KICK, etc.)
+===================================================================================================================
+
+--- [RECEIVING DATA FROM CLIENT] ---
+
+ [CLIENT / NETWORK]                                   [LINUX KERNEL / TCP STACK]
+ ──────────────────                                   ──────────────────────────
+
+ 1. Client sends [TCP PSH+ACK] (Data) ─────────────► Packet Arrives at NIC
+                                                     │
+                                                     ▼
+                                                     Socket Lookup on Rx:
+                                                     1. Search ehash via 4-Tuple [SrcIP,SrcPort,DstIP,DstPort]
+                                                        └──► Result: MATCH FOUND! (Child socket for client_fd)
+                                                     │
+                                                     ▼
+                                                     - Kernel strips TCP headers
+                                                     - Places raw payload into client_fd's RX Queue (sk_receive_queue)
+                                                     - Sets POLLIN flag on client_fd in pollfds array
+
+ [C++ USER SPACE]
+ ────────────────
+ 2. poll() returns -> detects POLLIN on client_fd[4]
+ 3. bytes = recv(client_fd, buffer, 1024, 0);
+    │
+    └──────────────────────────────────────────────► Copies payload from kernel sk_receive_queue into buffer
+                                                     - Frees packet sk_buff from kernel memory
+
+
+--- [SENDING DATA TO CLIENT] ---
+
+ [C++ USER SPACE]
+ ────────────────
+ 1. send(client_fd, "PRIVMSG #1337 :Hi\r\n", len, 0);
+    │
+    └──────────────────────────────────────────────► [LINUX KERNEL]
+                                                     - Copies string into client_fd's TX Queue (sk_write_queue)
+                                                     - Wraps data in TCP packets & transmits via NIC
+                                                     - Keeps copy in TX Queue until Client returns TCP ACK
+                                                     - Once ACK arrives, kernel frees buffer from TX Queue
+
+
+===================================================================================================================
+PHASE 5: CONNECTION TEARDOWN & DISCONNECT HANDLING
+===================================================================================================================
+
+ [CLIENT / NETWORK]                                   [LINUX KERNEL / TCP STACK]
+ ──────────────────                                   ──────────────────────────
+
+ 1. Client closes app / sends [TCP FIN] ───────────► Packet Arrives at NIC
+                                                     │
+                                                     ▼
+                                                     Socket Lookup on Rx:
+                                                     1. Search ehash via 4-Tuple
+                                                        └──► Result: MATCH FOUND! (Child socket for client_fd)
+                                                     │
+                                                     ▼
+                                                     - Changes state: TCP_ESTABLISHED ──► TCP_CLOSE_WAIT
+                                                     - Marks client_fd with POLLIN in pollfds array
+
+ [C++ USER SPACE]
+ ────────────────
+ 2. poll() returns -> detects POLLIN on client_fd[4]
+ 3. int bytes = recv(client_fd, buffer, 1024, 0);
+    │
+    └──────────────────────────────────────────────► Returns 0 bytes (EOF / Disconnect Signal)
+
+ 4. close(client_fd);
+    │
+    └──────────────────────────────────────────────► [LINUX KERNEL]
+                                                     - Sends TCP FIN+ACK to client
+                                                     - Removes socket from ehash table
+                                                     - Frees fd[4] index in process FD table
+                                                     - Destroys associated struct file & tcp_sock memory

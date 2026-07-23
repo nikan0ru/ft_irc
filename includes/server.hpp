@@ -58,4 +58,6 @@ class server
 
 
 };
+
+std::string normalize(std::string str);
 void sendErrorMessage(client * currentClient, std::string command, std::string message,std::string errCode);

@@ -119,7 +119,7 @@ void server::removeClient(int fd)
 			break;
 		}
     }
-	for(std::map<std::string, Channel>::iterator it = this->Channels.begin(); it != this->Channels.end(); it++)
+	for(std::map<std::string, Channel>::iterator it = this->Channels.begin(); it != this->Channels.end();)
 	{
 		if(it->second.isMember(fd))
 			it->second.removeMember(fd);
@@ -143,7 +143,6 @@ void server::removeFd(int fd)
             pollfds.erase(pollfds.begin() + i);
     }
 }
-
 
 
 int server::listen_and_monitorfdstatus()
@@ -373,10 +372,7 @@ void server::handleAuthentication(client* curr_client, std::vector<std::string>&
         curr_client->setRealName(cmd[4]);
         curr_client->setAuthenRequirment(3);
     }
-	else{
-		std::string response = "\nThe recommended order for a client to register is as follows:\nPass message\nNick message\nUser message\n\n";
-		send(curr_client->getFD(), response.c_str(), response.length(), 0);
-	}
+
     std::string RPL_WELCOME = ":ircserv 001 "+curr_client->getNickName() \
     +" :Welcome to the Internet Relay Network " + curr_client->getClientName() + "\r\n";
     if (curr_client->checkAuthenRequirment(3) == true && curr_client->isAuthenticat() == false)
@@ -406,12 +402,19 @@ int server::handelNewData(int cliFd)
     }
     else
     {
-        currClient->clientSetBuff(split_recved_buffer(buffer));
-        msg = currClient->clientGetBuff();
-        for (size_t i =0; i < msg.size(); i++)
+		currClient->readBuffer += std::string(buffer, bytes);
+		size_t pos;
+
+        while ((pos = currClient->readBuffer.find('\n')) != std::string::npos)
         {
-            if (!msg[i].empty())
-                parse_and_exe(currClient, splited_cmd(msg[i]));
+            std::string line = currClient->readBuffer.substr(0, pos);
+            currClient->readBuffer.erase(0, pos + 1);
+
+            if (!line.empty() && line[line.size() - 1] == '\r')
+                line.erase(line.size() - 1);
+
+            if (!line.empty())
+                parse_and_exe(currClient, splited_cmd(line));
         }
     }
     return EXIT_SUCCESS;

@@ -12,21 +12,19 @@ class client
 		std::string userName;
 		std::string realName;
         std::string IpAdd;
-        std::vector<std::string> buffer;
 		std::set<std::string> channelsJoined;
         bool authentication;
         bool passOk;
         bool hasNick;
         bool hasUser;
     public:
+        std::string readBuffer;
         client();
-        void clientSetBuff(std::vector<std::string> buff);
     	const std::string &getUserName() const;
         const std::string &getNickName() const;
     	const std::string &getRealName() const;
 		const std::string getClientName() const;
 
-        std::vector<std::string> clientGetBuff();
         void setFD(int FD);
         void setIpAdd(std::string CIpAdd);
         void setAsAuthenticated();

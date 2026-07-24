@@ -26,7 +26,7 @@ class server
         int client_fd;
         std::vector<struct pollfd> pollfds;
         std::vector<client> clients;
-		    std::map<std::string, Channel> Channels;
+		std::map<std::string, Channel> Channels;
     public:
         server(const std::string& portnum, const std::string& authpass);
         ~server();

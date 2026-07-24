@@ -192,7 +192,7 @@ int server::listen_and_monitorfdstatus()
 
 int server::procces_connections()
 {
-    for (size_t i = 0; i < pollfds.size(); i++)
+    for (int i = pollfds.size() - 1; i >= 0; i--)
     {
         if (pollfds[i].revents & POLLIN)
         {

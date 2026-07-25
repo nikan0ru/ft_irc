@@ -61,9 +61,7 @@ void server::handleKick(client* currentClient, std::vector<std::string>& cmd)
                 for (size_t k = 0; k < this->clients.size(); k++)
                 {
                     if (it->second.isMember(this->clients[k].getFD()))
-                    {
-                        send(this->clients[k].getFD(), message.c_str(), message.length(), 0);
-                    }
+						this->clients[k].writeBuffer += message;
                 }
 
                 if (it->second.isOperator(this->clients[j].getFD()))
@@ -76,8 +74,6 @@ void server::handleKick(client* currentClient, std::vector<std::string>& cmd)
         }
     }
 }
-
-
 
 void server::handleInvite(client* curr_client, std::vector<std::string>& cmd)
 {
@@ -110,19 +106,18 @@ void server::handleInvite(client* curr_client, std::vector<std::string>& cmd)
 		{
 			std::string textMsg = ":ircserv 443 " + curr_client->getNickName() + " " +
 					targetNick + " " + targetChannel + " :is already on channel\r\n";
-			return (send(curr_client->getFD(), textMsg.c_str(), textMsg.size(), 0), void());
+			return (curr_client->writeBuffer+=textMsg, void());
 		}
 		it->second.addInvited(targetClient->getFD());
 	}
 
     std::string textMsg = ":ircserv 341 " + curr_client->getNickName() + \
         " " + targetNick + " " + targetChannel + "\r\n";
-    send(curr_client->getFD(), textMsg.c_str(), textMsg.size(), 0);
+    curr_client->writeBuffer += textMsg;
     textMsg = ":" + curr_client->getNickName() + "!" + curr_client->getUserName() + "@" + curr_client->getIpAdd()
                 + " " + "INVITE" + " " +targetNick + " " + targetChannel + "\r\n";
-    send(targetClient->getFD(), textMsg.c_str(), textMsg.size(), 0);
+    curr_client->writeBuffer += textMsg;
 }
-
 
 void server::handlePrivmsg(client* curr_client, std::vector<std::string>& cmd)
 {
@@ -159,7 +154,12 @@ void server::handlePrivmsg(client* curr_client, std::vector<std::string>& cmd)
 			for (std::set<int>::iterator sit = it->second.getMembers().begin(); sit != it->second.getMembers().end(); sit++)
 			{
 				if(*sit != curr_client->getFD())
-					send(*sit, textMsg.c_str(), textMsg.size(), 0);
+				{
+					client* cli = getClient(*sit);
+					if (cli)
+				    	cli->writeBuffer += textMsg;
+				}
+
 			}
         }
         else
@@ -170,7 +170,7 @@ void server::handlePrivmsg(client* curr_client, std::vector<std::string>& cmd)
                 if(normalize(clients[j].getNickName()) == normalize(target)) //must send to it self her ???
                 {
                     textMsg = ":" + curr_client->getClientName() + " PRIVMSG " + target + " :" + cmd[2] +"\r\n";
-                    send(this->clients[j].getFD(), textMsg.c_str(), textMsg.size(), 0);
+					this->clients[j].writeBuffer += textMsg;
                     targetFound = true;
                 }
             }
@@ -179,7 +179,6 @@ void server::handlePrivmsg(client* curr_client, std::vector<std::string>& cmd)
         }
     }
 }
-
 
 void server::handleJoin(client * currentClient, std::vector<std::string> & command)
 {
@@ -248,16 +247,18 @@ void server::handleSingleJoin(client * currentClient,std::string & channelName, 
 	reply = ":" + currentClient->getClientName() + " JOIN " + it->second.getChannelName() +"\r\n";
 	for (std::set<int>::iterator sit = it->second.getMembers().begin(); sit != it->second.getMembers().end(); sit++)
 	{
-		send(*sit, reply.c_str(), reply.size(), 0);
+		client* cli = getClient(*sit);
+		if (cli)
+			cli->writeBuffer += reply;
 	}
 
 	if(!it->second.getTopic().empty())
 	{
 		reply = ":ircserv 332 " + currentClient->getNickName() + " " + it->second.getChannelName() + " :" + it->second.getTopic() + "\r\n";
-		send(currentClient->getFD(), reply.c_str(), reply.size(), 0);
+		currentClient->writeBuffer += reply;
 		ss << it->second.getTopicModificationDate();
 		reply = ":ircserv 333 " + currentClient->getNickName() + " " + it->second.getChannelName() + " " + it->second.getTopicSetter() + " " + ss.str() + "\r\n";
-		send(currentClient->getFD(), reply.c_str(), reply.length(), 0);
+		currentClient->writeBuffer += reply;
 	}
 	server::broadcastNamesList(currentClient,  it);
 }
@@ -312,6 +313,11 @@ void server::handleMode(client * currentClient, std::vector<std::string> &comman
 	if(it == this->Channels.end())
 	{
 		sendErrorMessage(currentClient,channelName, " :No such channel", "403");
+		return;
+	}
+	if(!it->second.isMember(currentClient->getFD()))
+	{
+		sendErrorMessage(currentClient,channelName, " :You're not on that channel", "442");
 		return;
 	}
 	if(command.size() == 2)
@@ -409,7 +415,9 @@ void server::handleMode(client * currentClient, std::vector<std::string> &comman
 						 appliedParams + "\r\n";
 		for (std::set<int>::iterator sit = it->second.getMembers().begin(); sit != it->second.getMembers().end(); sit++)
 		{
-			send(*sit, appliedModes.c_str(), appliedModes.size(), 0);
+			client* cli = getClient(*sit);
+			if (cli)
+				cli->writeBuffer += appliedModes;
 		}
 
 	}
@@ -480,7 +488,7 @@ bool server::handleSingleMode(client *currentClient, char mode, short addOrRemov
 				if(!std::isdigit(parameter[i]))
 				{
 					reply += ":ircserv 696 " + currentClient->getNickName() + " " + channelName + " " + std::string (1, mode) + " " + parameter + " :invalid mode parameter\r\n";
-					send(currentClient->getFD(), reply.c_str(), reply.length(), 0);
+					currentClient->writeBuffer += reply;
 					return false;
 				}
 			}
@@ -489,7 +497,7 @@ bool server::handleSingleMode(client *currentClient, char mode, short addOrRemov
 			if(limit == 0)
 			{
 				reply += ":ircserv 696 " + currentClient->getNickName() + " " + channelName + " " + std::string (1, mode) + " " + parameter + " :invalid mode parameter\r\n";
-					send(currentClient->getFD(), reply.c_str(), reply.length(), 0);
+				currentClient->writeBuffer += reply;
 				return false;
 			}
 			if (it->second.isLimited() && it->second.getMaxLimit() == limit)
@@ -508,6 +516,11 @@ bool server::handleSingleMode(client *currentClient, char mode, short addOrRemov
 	}
 	else if (mode == 'o')
 	{
+		if(!it->second.isOperator(currentClient->getFD()))
+		{
+			sendErrorMessage(currentClient,channelName, " :You're not channel operator", "482");
+			return false;
+		}
 		for (size_t i = 0; i < this->clients.size(); i++)
 		{
 			if (normalize(this->clients[i].getNickName()) == normalize(parameter))
@@ -561,7 +574,7 @@ void printChannelModes(client * currentClient, std::string & channelName, std::m
 			args += " " + ss.str();
 		}
 		response += args + "\r\n";
-		send(currentClient->getFD(), response.c_str(), response.length(), 0);
+		currentClient->writeBuffer += response;
 		ss.str("");
 		ss.clear();
 		ss << it->second.getCreationTime();
@@ -591,10 +604,10 @@ void server::broadcastNamesList(client * currentClient, std::map<std::string, Ch
 		}
 	}
 	reply += "\r\n";
-	send(currentClient->getFD(), reply.c_str(), reply.size(), 0);
+	currentClient->writeBuffer += reply;
 	reply = ":ircserv 366 " + currentClient->getNickName() + " " + it->second.getChannelName() \
 			+ " :End of /NAMES list\r\n";
-	send(currentClient->getFD(), reply.c_str(), reply.size(), 0);
+	currentClient->writeBuffer += reply;
 }
 
 void sendErrorMessage(client * currentClient, std::string command, std::string message,std::string errCode)
@@ -604,7 +617,7 @@ void sendErrorMessage(client * currentClient, std::string command, std::string m
     if (target.empty())
 		target = "*";
 	response = ":ircserv " + errCode + " " + target + " " + command + message + "\r\n";
-	send(currentClient->getFD(), response.c_str(), response.length(), 0);
+	currentClient->writeBuffer += response;
 }
 
 void server::handleTopic(client * currentClient, std::vector<std::string> & command)
@@ -648,11 +661,11 @@ void server::handleTopic(client * currentClient, std::vector<std::string> & comm
 		return;
 	}
 	response = ":ircserv 332 " + currentClient->getNickName() + " " + it->second.getChannelName() + " :" + it->second.getTopic() + "\r\n";
-	send(currentClient->getFD(), response.c_str(), response.length(), 0);
+	currentClient->writeBuffer += response;
 	ss << it->second.getTopicModificationDate();
 	response =":ircserv 333 " + currentClient->getNickName() + " " + it->second.getChannelName() + " " + it->second.getTopicSetter() + " "
 	+ ss.str() +"\r\n";
-	send(currentClient->getFD(), response.c_str(), response.length(), 0);
+	currentClient->writeBuffer += response;
 }
 
 void server::manageTopic(client * currentClient, std::vector<std::string> & command, std::map<std::string, Channel>::iterator & it)
@@ -684,7 +697,9 @@ void server::manageTopic(client * currentClient, std::vector<std::string> & comm
 	reply = ":" + currentClient->getClientName()+ " TOPIC " + it->second.getChannelName() + " :" + topicMessage + "\r\n";
 	for (std::set<int>::iterator sit = it->second.getMembers().begin(); sit !=  it->second.getMembers().end(); sit++)
 	{
-		send(*sit, reply.c_str(), reply.length(), 0);
+		client* cli = getClient(*sit);
+		if (cli)
+			cli->writeBuffer += reply;
 	}
 
 }

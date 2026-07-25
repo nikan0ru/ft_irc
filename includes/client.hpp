@@ -19,6 +19,7 @@ class client
         bool hasUser;
     public:
         std::string readBuffer;
+        std::string writeBuffer;
         client();
     	const std::string &getUserName() const;
         const std::string &getNickName() const;

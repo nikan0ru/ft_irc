@@ -160,26 +160,35 @@ int server::listen_and_monitorfdstatus()
         std::cout << "ERROR: Failed to start listening for incoming connections.\n";
         return EXIT_FAILURE;
     }
-    // may be i need to handel signals here
 
     struct pollfd Newpollfd;
 
     Newpollfd.fd = this->socket_fd;
     Newpollfd.events = POLLIN;
-    Newpollfd.revents = 0; //i can use it or not ??
-
+    Newpollfd.revents = 0;
     this->pollfds.push_back(Newpollfd);
+
     signal(SIGINT, signalHandler);
     signal(SIGQUIT, signalHandler);
     signal(SIGPIPE, SIG_IGN);
+
     std::cout << "server: waiting for connections...\n";
     while (g_running)
     {
+        for (size_t i = 1; i < pollfds.size(); i++)
+        {
+            client* cli = getClient(pollfds[i].fd);
+            if (cli && !cli->writeBuffer.empty())
+                pollfds[i].events = POLLIN | POLLOUT;
+            else
+                pollfds[i].events = POLLIN;
+        }
+    
         if (poll(&pollfds[0], pollfds.size(), -1) == -1)
         {
-            if (errno == EINTR)
+            if (!g_running)
                 break;
-            std::cout << "pool failed";
+            std::cout << "poll failed\n";
             return EXIT_FAILURE;
         }
         this->procces_connections();
@@ -200,6 +209,17 @@ int server::procces_connections()
                 this->acceptNewClient();
             else
                 this->handelNewData(pollfds[i].fd);
+        }
+
+        if (pollfds[i].revents & POLLOUT)
+        {
+            client* cli = getClient(pollfds[i].fd);
+            if (cli && !cli->writeBuffer.empty())
+            {
+                int bytesSent = send(cli->getFD(), cli->writeBuffer.c_str(), cli->writeBuffer.length(), 0);
+                if (bytesSent > 0)
+                    cli->writeBuffer.erase(0, bytesSent);
+            }
         }
     }
     return EXIT_SUCCESS;
@@ -288,6 +308,7 @@ std::vector<std::string> server::splited_cmd(std::string& cmd)
             break;
         }
         vec.push_back(word);
+        std::cout << vec[1].size()<< "\n";
     }
     return vec;
 }
@@ -343,7 +364,7 @@ void server::handleAuthentication(client* curr_client, std::vector<std::string>&
         if (curr_client->isAuthenticat())
             return (sendErrorMessage(curr_client, "PASS", " :You may not reregister", "462"), void());
         if (cmdsize < 2)
-            return (sendErrorMessage(curr_client, "PASS", " :Not enough parameters", "461"), void()); // what if the pasword contiene spaces
+            return (sendErrorMessage(curr_client, "PASS", " :Not enough parameters", "461"), void());
         if (cmd[1].compare(this->servpass))
             return (sendErrorMessage(curr_client, "PASS", " :Password incorrect", "464"), curr_client->setPassStatusFalse(), void());
         curr_client->setAuthenRequirment(1);
@@ -386,6 +407,7 @@ int server::handelNewData(int cliFd)
     char buffer[1024];
     std::memset(buffer, 0, 1024);
     int bytes = recv(cliFd, buffer, sizeof(buffer) -1, 0);
+    std::cout << bytes << "\n";
     std::vector<std::string> msg;
     client *currClient = getClient(cliFd);
     if (bytes <= 0)
@@ -404,7 +426,6 @@ int server::handelNewData(int cliFd)
     {
 		currClient->readBuffer += std::string(buffer, bytes);
 		size_t pos;
-
         while ((pos = currClient->readBuffer.find('\n')) != std::string::npos)
         {
             std::string line = currClient->readBuffer.substr(0, pos);

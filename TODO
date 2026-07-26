@@ -1,8 +1,0 @@
--  since only after both USER and NICK have been
-   received from a client does a user become registered.
-
-- It must be noted that realname parameter must be the last parameter,
-   because it may contain space characters and must be prefixed with a
-   colon (':') to make sure this is recognised as such.
-
-- send(this->clients[j].getFD(), message.c_str(), message.length(), 0);// u need to prodcast the msg for kick line 373 server file

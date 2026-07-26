@@ -1,7 +1,7 @@
-#include <sys/socket.h> // for socket()
-#include <netinet/in.h> // for struct sockaddr_in
-#include <netdb.h> // for getprotobyname
-#include <unistd.h> // Required for gethostname
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netdb.h>
+#include <unistd.h>
 #include <vector>
 #include <map>
 #include <cstring>
@@ -21,8 +21,8 @@ class server
     private:
         int socket_fd;
         int reuse_flag;
-        const std::string& servport;
-        const std::string& servpass;
+        std::string servport;
+        std::string servpass;
         int client_fd;
         std::vector<struct pollfd> pollfds;
         std::vector<client> clients;
@@ -32,12 +32,11 @@ class server
         ~server();
         int creat_sokect();
         client *getClient(int fd);
-		int listen_and_monitorfdstatus();
+		    int listen_and_monitorfdstatus();
         int procces_connections();
         int acceptNewClient();
         int handelNewData(int cliFd);
       	void parse_and_exe(client *curClient, std::vector<std::string> splited_cmd);
-        std::vector<std::string> split_recved_buffer(std::string buff);
         std::vector<std::string> splited_cmd(std::string& cmd);
         void closeAllFds();
         void removeFd(int fd);
@@ -46,8 +45,8 @@ class server
         void handlePrivmsg(client* curr_client, std::vector<std::string>& cmd);
         void handleInvite(client* curr_client, std::vector<std::string>& cmd);
         bool isValidNickName(std::string& nickName);
-	  	void handleJoin(client * curr_client, std::vector<std::string> & command);
-	  	void handleSingleJoin(client * curr_client, std::string & channelName, std::string &channelKey);
+	  	  void handleJoin(client * curr_client, std::vector<std::string> & command);
+	  	  void handleSingleJoin(client * curr_client, std::string & channelName, std::string &channelKey);
         void handleTopic(client * curr_client, std::vector<std::string> & command);
         void manageTopic(client * curr_client, std::vector<std::string> & command, std::map<std::string, Channel>::iterator &it);
         void broadcastNamesList(client * currentClient, std::map<std::string, Channel>::iterator &it);
@@ -55,7 +54,7 @@ class server
         void handleMode(client * currentClient, std::vector<std::string> &command);
         bool handleSingleMode(client *currentClient,char mode, short addOrRemove, std::map<std::string, Channel>::iterator it, std::string parameter, std::string channelName);
         void handleKick(client* currentClient, std::vector<std::string>& cmd);
-
-
 };
+
+std::string normalize(std::string str);
 void sendErrorMessage(client * currentClient, std::string command, std::string message,std::string errCode);

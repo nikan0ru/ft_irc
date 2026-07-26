@@ -430,6 +430,11 @@ bool server::handleSingleMode(client *currentClient, char mode, short addOrRemov
 	std::string reply;
 
 	limit = 0;
+	if(!it->second.isOperator(currentClient->getFD()))
+	{
+		sendErrorMessage(currentClient,channelName, " :You're not channel operator", "482");
+		return false;
+	}
 	if(mode == 'i')
 	{
 		if(addOrRemove == 1 && !it->second.isInviteOnly())
@@ -516,11 +521,6 @@ bool server::handleSingleMode(client *currentClient, char mode, short addOrRemov
 	}
 	else if (mode == 'o')
 	{
-		if(!it->second.isOperator(currentClient->getFD()))
-		{
-			sendErrorMessage(currentClient,channelName, " :You're not channel operator", "482");
-			return false;
-		}
 		for (size_t i = 0; i < this->clients.size(); i++)
 		{
 			if (normalize(this->clients[i].getNickName()) == normalize(parameter))

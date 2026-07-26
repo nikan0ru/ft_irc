@@ -33,7 +33,7 @@ server::server(const std::string& portnum, const std::string& authpass):socket_f
 
 int server::creat_sokect()
 {
-    struct addrinfo hints, *serverinfo;
+    struct addrinfo hints, *serverinfo = NULL;
 
     std::memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_INET;
@@ -189,6 +189,7 @@ int server::listen_and_monitorfdstatus()
             if (!g_running)
                 break;
             std::cout << "poll failed\n";
+            closeAllFds();
             return EXIT_FAILURE;
         }
         this->procces_connections();
@@ -273,22 +274,6 @@ client *server::getClient(int fd)
     return NULL;
 }
 
-std::vector<std::string> server::split_recved_buffer(std::string buff)
-{
-    std::istringstream text(buff);
-    std::string token;
-    std::vector<std::string> cmds;
-    while (std::getline(text, token))
-    {
-        size_t cpos = token.find_first_of("\r\n");
-        if (cpos != std::string::npos)
-            token = token.substr(0, cpos);
-		std::cout << token ;
-        cmds.push_back(token);
-    }
-    return cmds;
-}
-
 std::vector<std::string> server::splited_cmd(std::string& cmd)
 {
     std::istringstream msg(cmd);
@@ -308,7 +293,6 @@ std::vector<std::string> server::splited_cmd(std::string& cmd)
             break;
         }
         vec.push_back(word);
-        std::cout << vec[1].size()<< "\n";
     }
     return vec;
 }
@@ -407,7 +391,6 @@ int server::handelNewData(int cliFd)
     char buffer[1024];
     std::memset(buffer, 0, 1024);
     int bytes = recv(cliFd, buffer, sizeof(buffer) -1, 0);
-    std::cout << bytes << "\n";
     std::vector<std::string> msg;
     client *currClient = getClient(cliFd);
     if (bytes <= 0)

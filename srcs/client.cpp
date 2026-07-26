@@ -75,16 +75,6 @@ void client::setPassStatusFalse()
     this->passOk = false;
 };
 
-void client::clientSetBuff(std::vector<std::string> buff)
-{
-    this->buffer = buff;
-}
-
-std::vector<std::string> client::clientGetBuff()
-{
-    return (this->buffer);
-}
-
 void client::setAuthenRequirment(int id)
 {
     if (id == 1)

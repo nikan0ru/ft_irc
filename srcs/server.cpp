@@ -391,15 +391,9 @@ int server::handelNewData(int cliFd)
     char buffer[1024];
     std::memset(buffer, 0, 1024);
     int bytes = recv(cliFd, buffer, sizeof(buffer) -1, 0);
-    std::vector<std::string> msg;
     client *currClient = getClient(cliFd);
     if (bytes <= 0)
     {
-        if (bytes == -1)
-        {
-            std::cout << "no messages are available at the socket (maybe ctrlc or ctr..)\n";
-            return EXIT_SUCCESS;
-        }
         std::cout << "the peer has performed an orderly shutdown.\n";
         removeClient(cliFd);
         removeFd(cliFd);
@@ -416,6 +410,9 @@ int server::handelNewData(int cliFd)
 
             if (!line.empty() && line[line.size() - 1] == '\r')
                 line.erase(line.size() - 1);
+
+            if (line.length() > 510)
+                line.resize(510);
 
             if (!line.empty())
                 parse_and_exe(currClient, splited_cmd(line));

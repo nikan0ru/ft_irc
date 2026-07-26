@@ -7,7 +7,7 @@ void server::handleKick(client* currentClient, std::vector<std::string>& cmd)
     std::string kickReason;
     std::string message;
     std::map<std::string, Channel>::iterator it;
-    size_t channelListsize;
+    size_t loopCount;
 
     if (!currentClient->isAuthenticat())
     {
@@ -22,11 +22,11 @@ void server::handleKick(client* currentClient, std::vector<std::string>& cmd)
     channelList = splitArgument(cmd[1]);
     nickList = splitArgument(cmd[2]);
 
-    channelListsize = nickList.size();
-    if (channelList.size() > 1 && channelList.size() < channelListsize)
-        channelListsize = channelList.size();
+    loopCount = nickList.size();
+    if (channelList.size() > 1 && channelList.size() < loopCount)
+        loopCount = channelList.size();
 
-    for (size_t i = 0; i < channelListsize; i++)
+    for (size_t i = 0; i < loopCount; i++)
     {
         std::string targetChan = channelList[channelList.size() == 1 ? 0 : i];
         it = this->Channels.find(normalize(targetChan));
@@ -635,7 +635,7 @@ void server::handleTopic(client * currentClient, std::vector<std::string> & comm
 
 	if(command.size() < 2)
 	{
-		sendErrorMessage(currentClient,command[0], " :Not enough parameters", "461");
+		sendErrorMessage(currentClient,"TOPIC", " :Not enough parameters", "461");
 		return;
 	}
 	channelName = normalize(command[1]);

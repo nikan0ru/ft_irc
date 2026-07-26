@@ -183,7 +183,7 @@ int server::listen_and_monitorfdstatus()
             else
                 pollfds[i].events = POLLIN;
         }
-    
+
         if (poll(&pollfds[0], pollfds.size(), -1) == -1)
         {
             if (!g_running)
@@ -400,7 +400,7 @@ int server::handelNewData(int cliFd)
             std::cout << "no messages are available at the socket (maybe ctrlc or ctr..)\n";
             return EXIT_SUCCESS;
         }
-        std::cout << "he peer has performed an orderly shutdown.\n";
+        std::cout << "the peer has performed an orderly shutdown.\n";
         removeClient(cliFd);
         removeFd(cliFd);
         close(cliFd);

@@ -381,7 +381,11 @@ void server::handleAuthentication(client* curr_client, std::vector<std::string>&
     std::string RPL_WELCOME = ":ircserv 001 "+curr_client->getNickName() \
     +" :Welcome to the Internet Relay Network " + curr_client->getClientName() + "\r\n";
     if (curr_client->checkAuthenRequirment(3) == true && curr_client->isAuthenticat() == false)
-        return (curr_client->setAsAuthenticated(), 	send(curr_client->getFD(), RPL_WELCOME.c_str(), RPL_WELCOME.length(), 0), void());
+    {
+        curr_client->setAsAuthenticated();
+        curr_client->writeBuffer += RPL_WELCOME;
+        return;
+    }
     return;
 }
 

@@ -167,7 +167,7 @@ void server::handlePrivmsg(client* curr_client, std::vector<std::string>& cmd)
             bool targetFound = false;
             for (size_t j = 0; j < clients.size(); j++)
             {
-                if(normalize(clients[j].getNickName()) == normalize(target)) //must send to it self her ???
+                if(normalize(clients[j].getNickName()) == normalize(target))
                 {
                     textMsg = ":" + curr_client->getClientName() + " PRIVMSG " + clients[j].getNickName() + " :" + cmd[2] +"\r\n";
 					this->clients[j].writeBuffer += textMsg;

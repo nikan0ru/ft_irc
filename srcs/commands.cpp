@@ -37,12 +37,12 @@ void server::handleKick(client* currentClient, std::vector<std::string>& cmd)
         }
         if (!it->second.isMember(currentClient->getFD()))
         {
-            sendErrorMessage(currentClient, targetChan, " :You're not on that channel", "442");
+            sendErrorMessage(currentClient, it->second.getChannelName(), " :You're not on that channel", "442");
             continue;
         }
         if (!it->second.isOperator(currentClient->getFD()))
         {
-            sendErrorMessage(currentClient, targetChan, " :You're not channel operator", "482");
+            sendErrorMessage(currentClient, it->second.getChannelName(), " :You're not channel operator", "482");
             continue;
         }
         for (size_t j = 0; j < this->clients.size(); j++)
@@ -51,13 +51,13 @@ void server::handleKick(client* currentClient, std::vector<std::string>& cmd)
             {
                 if (!it->second.isMember(this->clients[j].getFD()))
                 {
-                    sendErrorMessage(currentClient, nickList[i] + " " + targetChan, " :They aren't on that channel", "441");
+                    sendErrorMessage(currentClient, nickList[i] + " " + it->second.getChannelName(), " :They aren't on that channel", "441");
                     break;
                 }
 
                 kickReason = (cmd.size() > 3) ? cmd[3] : nickList[i];
 
-                message = ":" + currentClient->getClientName() + " KICK " + targetChan + " " + nickList[i] + " :" + kickReason + "\r\n";
+                message = ":" + currentClient->getClientName() + " KICK " + it->second.getChannelName() + " " + nickList[i] + " :" + kickReason + "\r\n";
                 for (size_t k = 0; k < this->clients.size(); k++)
                 {
                     if (it->second.isMember(this->clients[k].getFD()))
@@ -93,15 +93,15 @@ void server::handleInvite(client* curr_client, std::vector<std::string>& cmd)
 			targetClient = &clients[i];
 
 	if (targetClient == NULL)
-		return (sendErrorMessage(curr_client, "INVITE", " : No such nick", "401"), void());
+		return (sendErrorMessage(curr_client, targetNick, " : No such nick", "401"), void());
 
 	if(it != this->Channels.end())
 	{
 		if(!it->second.isMember(curr_client->getFD()))
-			return (sendErrorMessage(curr_client,cmd[0], " :You're not on that channel", "442"), void());
+			return (sendErrorMessage(curr_client,it->second.getChannelName(), " :You're not on that channel", "442"), void());
 		if(it->second.isInviteOnly())
         	if (!it->second.isOperator(curr_client->getFD()))
-            	return (sendErrorMessage(curr_client,cmd[0], " :You're not channel operator", "482"), void());
+            	return (sendErrorMessage(curr_client,it->second.getChannelName(), " :You're not channel operator", "482"), void());
 		if(it->second.isMember(targetClient->getFD()))
 		{
 			std::string textMsg = ":ircserv 443 " + curr_client->getNickName() + " " +
@@ -116,7 +116,7 @@ void server::handleInvite(client* curr_client, std::vector<std::string>& cmd)
     curr_client->writeBuffer += textMsg;
     textMsg = ":" + curr_client->getNickName() + "!" + curr_client->getUserName() + "@" + curr_client->getIpAdd()
                 + " " + "INVITE" + " " +targetNick + " " + targetChannel + "\r\n";
-    curr_client->writeBuffer += textMsg;
+	targetClient->writeBuffer += textMsg;
 }
 
 void server::handlePrivmsg(client* curr_client, std::vector<std::string>& cmd)
@@ -169,7 +169,7 @@ void server::handlePrivmsg(client* curr_client, std::vector<std::string>& cmd)
             {
                 if(normalize(clients[j].getNickName()) == normalize(target)) //must send to it self her ???
                 {
-                    textMsg = ":" + curr_client->getClientName() + " PRIVMSG " + target + " :" + cmd[2] +"\r\n";
+                    textMsg = ":" + curr_client->getClientName() + " PRIVMSG " + clients[j].getNickName() + " :" + cmd[2] +"\r\n";
 					this->clients[j].writeBuffer += textMsg;
                     targetFound = true;
                 }
@@ -647,7 +647,7 @@ void server::handleTopic(client * currentClient, std::vector<std::string> & comm
 	}
 	if(!it->second.isMember(currentClient->getFD()))
 	{
-		sendErrorMessage(currentClient,channelName, " :You're not on that channel", "442");
+		sendErrorMessage(currentClient,it->second.getChannelName(), " :You're not on that channel", "442");
 		return;
 	}
 	if(command.size() > 2)
@@ -657,7 +657,7 @@ void server::handleTopic(client * currentClient, std::vector<std::string> & comm
 	}
 	if(it->second.getTopic().empty())
 	{
-		sendErrorMessage(currentClient, channelName, " :No topic is set", "331");
+		sendErrorMessage(currentClient, it->second.getChannelName(), " :No topic is set", "331");
 		return;
 	}
 	response = ":ircserv 332 " + currentClient->getNickName() + " " + it->second.getChannelName() + " :" + it->second.getTopic() + "\r\n";

@@ -398,7 +398,7 @@ int server::handelNewData(int cliFd)
         removeClient(cliFd);
         removeFd(cliFd);
         close(cliFd);
-    }
+   }
     else
     {
 		currClient->readBuffer += std::string(buffer, bytes);

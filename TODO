@@ -1,0 +1,9 @@
+         return (curr_client->setAsAuthenticated(), 	send(curr_client->getFD(), RPL_WELCOME.c_str(), RPL_WELCOME.length(), 0), void());
+
+
+std::string textMsg = ":ircserv 341 " + curr_client->getNickName() + \
+        " " + targetNick + " " + targetChannel + "\r\n";
+    curr_client->writeBuffer += textMsg;
+    textMsg = ":" + curr_client->getNickName() + "!" + curr_client->getUserName() + "@" + curr_client->getIpAdd()
+                + " " + "INVITE" + " " +targetNick + " " + targetChannel + "\r\n";
+    curr_client->writeBuffer += textMsg;
